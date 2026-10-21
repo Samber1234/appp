@@ -583,6 +583,7 @@ async function resetFactoryData() {
     if (!confirm('¿Restaurar todas las tablas SQL, DynamoDB y Redis a los valores iniciales de fábrica?')) {
         return;
     }
+    localStorage.removeItem('tn_profile_cache');
     await fetch('/api/v1/system/reset-demo', {method: 'POST'});
     showBanner('Bases de datos restauradas a los valores iniciales de fábrica.');
     loadTableData(currentTable);

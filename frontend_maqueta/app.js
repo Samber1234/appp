@@ -276,22 +276,37 @@ const app = (function () {
     }
   }
 
+  function aplicarPerfilEnInputs(data) {
+    if (!data) return;
+    const compEl = document.getElementById('prof-company');
+    const phoneEl = document.getElementById('prof-phone');
+    const rucEl = document.getElementById('prof-ruc');
+    const keyEl = document.getElementById('api-key-val');
+    if (compEl && data.company_name) compEl.value = data.company_name;
+    if (phoneEl && data.phone) phoneEl.value = data.phone;
+    if (rucEl && data.ruc) rucEl.value = data.ruc;
+    if (keyEl && data.api_key) keyEl.value = data.api_key;
+  }
+
   async function cargarPerfilDesdeBD() {
+    // 1. Pintado instantáneo en 0 ms desde caché local para evitar efecto fantasma al recargar
     try {
-      const res = await fetch(`${API_URL}/api/v1/auth/profile`);
+      const cached = localStorage.getItem('tn_profile_cache');
+      if (cached) {
+        aplicarPerfilEnInputs(JSON.parse(cached));
+      }
+    } catch (e) {}
+
+    // 2. Sincronización desde Base de Datos
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/profile`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        const compEl = document.getElementById('prof-company');
-        const phoneEl = document.getElementById('prof-phone');
-        const rucEl = document.getElementById('prof-ruc');
-        const keyEl = document.getElementById('api-key-val');
-        if (compEl && data.company_name) compEl.value = data.company_name;
-        if (phoneEl && data.phone) phoneEl.value = data.phone;
-        if (rucEl && data.ruc) rucEl.value = data.ruc;
-        if (keyEl && data.api_key) keyEl.value = data.api_key;
+        aplicarPerfilEnInputs(data);
+        localStorage.setItem('tn_profile_cache', JSON.stringify(data));
       }
     } catch (e) {
-      // mantener valores por defecto
+      // mantener valores actuales
     }
   }
 
@@ -319,6 +334,11 @@ const app = (function () {
       });
       const data = await res.json();
       if (res.ok) {
+        localStorage.setItem('tn_profile_cache', JSON.stringify({
+          company_name: company,
+          phone: phone,
+          ruc: ruc
+        }));
         showToast(data.message || 'Datos de perfil y contacto actualizados con éxito');
       } else {
         showToast(data.detail || 'El RUC debe constar exactamente de 11 dígitos numéricos', true);
@@ -518,32 +538,48 @@ const app = (function () {
   // =========================================================================
   // ÉPICA 4: ALERTAS COMERCIALES (HU0025 - HU0032)
   // =========================================================================
+  function aplicarConfigAlertasEnInputs(cfg) {
+    if (!cfg) return;
+    const tEl = document.getElementById('alert-input-titulo');
+    const bEl = document.getElementById('alert-input-cuerpo');
+    const cEl = document.getElementById('alert-input-cta');
+    const lEl = document.getElementById('alert-input-layout');
+    const colEl = document.getElementById('alert-input-color');
+    const dwEl = document.getElementById('alert-input-dwell');
+    const intEl = document.getElementById('alert-input-interac');
+    const frEl = document.getElementById('alert-input-freq');
+    const discEl = document.getElementById('alert-input-discount');
+    const actEl = document.getElementById('alert-input-active');
+
+    if (tEl && cfg.title !== undefined) tEl.value = cfg.title;
+    if (bEl && cfg.body_template !== undefined) bEl.value = cfg.body_template;
+    if (cEl && cfg.cta_text !== undefined) cEl.value = cfg.cta_text;
+    if (lEl && cfg.layout_type !== undefined) lEl.value = cfg.layout_type;
+    if (colEl && cfg.accent_color !== undefined) colEl.value = cfg.accent_color;
+    if (dwEl && cfg.min_dwell_seconds !== undefined) dwEl.value = cfg.min_dwell_seconds;
+    if (intEl && cfg.min_interactions !== undefined) intEl.value = cfg.min_interactions;
+    if (frEl && cfg.frequency_hours !== undefined) frEl.value = cfg.frequency_hours;
+    if (discEl && cfg.discount_percent !== undefined) discEl.value = cfg.discount_percent;
+    if (actEl && cfg.is_active !== undefined) actEl.checked = Boolean(cfg.is_active);
+  }
+
   async function cargarConfigAlertasDesdeBD() {
+    // 1. Pintado instantáneo en 0 ms desde caché local para evitar efecto fantasma al recargar
     try {
-      const res = await fetch(`${API_URL}/api/v1/alert-config`);
+      const cached = localStorage.getItem('tn_alert_cache');
+      if (cached) {
+        aplicarConfigAlertasEnInputs(JSON.parse(cached));
+        actualizarPreviewAlertas();
+      }
+    } catch (e) {}
+
+    // 2. Sincronización desde Base de Datos
+    try {
+      const res = await fetch(`${API_URL}/api/v1/alert-config`, { cache: 'no-store' });
       if (res.ok) {
         const cfg = await res.json();
-        const tEl = document.getElementById('alert-input-titulo');
-        const bEl = document.getElementById('alert-input-cuerpo');
-        const cEl = document.getElementById('alert-input-cta');
-        const lEl = document.getElementById('alert-input-layout');
-        const colEl = document.getElementById('alert-input-color');
-        const dwEl = document.getElementById('alert-input-dwell');
-        const intEl = document.getElementById('alert-input-interac');
-        const frEl = document.getElementById('alert-input-freq');
-        const discEl = document.getElementById('alert-input-discount');
-        const actEl = document.getElementById('alert-input-active');
-
-        if (tEl) tEl.value = cfg.title;
-        if (bEl) bEl.value = cfg.body_template;
-        if (cEl) cEl.value = cfg.cta_text;
-        if (lEl) lEl.value = cfg.layout_type;
-        if (colEl) colEl.value = cfg.accent_color;
-        if (dwEl) dwEl.value = cfg.min_dwell_seconds;
-        if (intEl) intEl.value = cfg.min_interactions;
-        if (frEl) frEl.value = cfg.frequency_hours;
-        if (discEl && cfg.discount_percent !== undefined) discEl.value = cfg.discount_percent;
-        if (actEl) actEl.checked = Boolean(cfg.is_active);
+        aplicarConfigAlertasEnInputs(cfg);
+        localStorage.setItem('tn_alert_cache', JSON.stringify(cfg));
       }
     } catch (e) {
       // usar valores en DOM
