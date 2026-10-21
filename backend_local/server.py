@@ -1770,6 +1770,11 @@ def root():
     return serve_maqueta()
 
 
+@app.get("/api/index", include_in_schema=False)
+def vercel_api_index_fallback():
+    return serve_maqueta()
+
+
 @app.get("/login", include_in_schema=False)
 def login_route():
     return serve_maqueta()
