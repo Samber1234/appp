@@ -1,0 +1,174 @@
+<div class="config-header delay-1">
+  <h2 style="margin-bottom: 25px; color: #1a1a1a;">Configuración de la cuenta</h2>
+</div>
+
+<div class="config-grid">
+  <div class="card config-card delay-2">
+    <div class="card-header">
+      <div class="icon-title">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#0d6efd" stroke-width="2" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <h3>PERFIL DE USUARIO</h3>
+      </div>
+      <span class="badge">Rol: Administrador</span>
+    </div>
+    
+    <div class="form-group row-align">
+      <label>Nombre:</label>
+      <input type="text" class="custom-input" value="TechNova Retail S.A.C">
+    </div>
+    <div class="form-group row-align">
+      <label>Email:</label>
+      <input type="email" class="custom-input readonly-input" value="admin@technova.motorIA.com.pe" readonly>
+    </div>
+    <div class="form-group row-align">
+      <label>Teléfono:</label>
+      <input type="text" class="custom-input" value="+51 944928999">
+    </div>
+    <div class="form-group row-align">
+      <label>Retail ID:</label>
+      <input type="text" class="custom-input readonly-input" value="RT-001" readonly>
+    </div>
+    
+    <div class="btn-right">
+      <button class="btn-primary small-btn" (click)="mostrarMensaje('Datos actualizados')">👤 Actualizar Datos</button>
+    </div>
+  </div>
+
+  <div class="card config-card delay-3">
+    <div class="card-header">
+      <div class="icon-title">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#0d6efd" stroke-width="2" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <h3>SEGURIDAD Y CONTRASEÑA</h3>
+      </div>
+    </div>
+    
+    <div class="form-group row-align mt-custom">
+      <label>Contraseña Actual:</label>
+      <input type="password" class="custom-input" placeholder="********">
+    </div>
+    <div class="form-group row-align">
+      <label>Nueva Contraseña:</label>
+      <input type="password" class="custom-input" placeholder="********">
+    </div>
+    <div class="form-group row-align">
+      <label>Confirmar Nueva Contraseña:</label>
+      <input type="password" class="custom-input" placeholder="********">
+    </div>
+    
+    <div class="btn-right push-bottom">
+      <button class="btn-primary small-btn" (click)="mostrarMensaje('Contraseña actualizada')">🔒 Actualizar Contraseña</button>
+    </div>
+  </div>
+
+  <div class="card config-card full-width delay-4">
+    <div class="card-header">
+      <div class="icon-title">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#0d6efd" stroke-width="2" fill="none"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <h3>PREFERENCIAS DE DASHBOARD</h3>
+      </div>
+    </div>
+    
+    <div class="preferences-layout">
+      <div class="pref-controls">
+        <div class="toggle-group">
+          <span>Recibir Reportes Diarios por Correo</span>
+          <label class="toggle-switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="selects-row">
+          <div class="form-group inline-select">
+            <label>Moneda Predeterminada:</label>
+            <select class="custom-select">
+              <option>PEN</option>
+              <option>USD</option>
+            </select>
+          </div>
+          <div class="form-group inline-select">
+            <label>Zona Horaria:</label>
+            <select class="custom-select">
+              <option>Perú (GMT-5)</option>
+              <option>México (GMT-6)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="pref-info">
+        <h4>ⓘ Notificaciones</h4>
+        <p>Recibirás un resumen diario con los principales KPIs y alertas relevantes para tu negocio B2C.</p>
+        <div class="btn-right" style="margin-top: 15px;">
+          <button class="btn-primary small-btn" (click)="mostrarMensaje('Preferencias guardadas')">⚡ Guardar Preferencias</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card config-card delay-5">
+    <div class="card-header">
+      <div class="icon-title">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#0d6efd" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><line x1="14.31" y1="8" x2="20.05" y2="17.94"></line><line x1="9.69" y1="8" x2="21.17" y2="8"></line><line x1="7.38" y1="12" x2="13.12" y2="2.06"></line><line x1="9.69" y1="16" x2="3.95" y2="6.06"></line><line x1="14.31" y1="16" x2="2.83" y2="16"></line><line x1="16.62" y1="12" x2="10.88" y2="21.94"></line></svg>
+        <h3>INTEGRACIÓN DEL MOTOR IA</h3>
+      </div>
+    </div>
+    
+    <div class="api-box">
+      <span class="api-label">🔑 API Key asignada ⓘ</span>
+      <div class="api-input-wrapper">
+        <input type="text" class="custom-input api-input" value="sk_live_****_****_A91K" readonly>
+        <span class="copy-icon">📋</span>
+      </div>
+    </div>
+
+    <ul class="status-list">
+      <li><span>☁️ API de Microservicios ⓘ</span> <span class="status-ok">OK (Verde) ✔</span></li>
+      <li><span>⚙️ Motor Híbrido GRU/XGBoost ⓘ</span> <span class="status-ok">OK (Verde) ✔</span></li>
+      <li><span>🛢️ Base de Datos / Daily_KPI ⓘ</span> <span class="status-ok">OK (Verde) ✔</span></li>
+      <li class="sync-time"><span>🕒 Última sincronización</span> <span>Hoy, 09:42 AM</span></li>
+    </ul>
+
+    <div class="card-footer-flex">
+      <span class="footer-note">🔒 Credenciales administradas por la plataforma</span>
+      <button class="btn-primary small-btn" (click)="mostrarMensaje('Conexión sincronizada con éxito')">🔄 Refrescar Conexión</button>
+    </div>
+  </div>
+
+  <div class="card config-card delay-6">
+    <div class="card-header">
+      <div class="icon-title">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="#0d6efd" stroke-width="2" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        <h3>ESTADO GENERAL DEL SISTEMA</h3>
+      </div>
+    </div>
+    <p class="subtitle" style="margin-top: -10px; margin-bottom: 20px;">Resumen del estado actual de los servicios críticos.</p>
+
+    <div class="service-box">
+      <div class="service-icon">☁️</div>
+      <div class="service-info">
+        <strong>Servicios de Plataforma</strong>
+        <span>Disponibles y operativos</span>
+      </div>
+      <div class="service-badge">OK</div>
+    </div>
+
+    <div class="service-box">
+      <div class="service-icon">🧠</div>
+      <div class="service-info">
+        <strong>Motor de IA</strong>
+        <span>Procesamiento normal</span>
+      </div>
+      <div class="service-badge">OK</div>
+    </div>
+
+    <div class="service-box">
+      <div class="service-icon">💾</div>
+      <div class="service-info">
+        <strong>Almacenamiento de Datos</strong>
+        <span>Sin incidencias</span>
+      </div>
+      <div class="service-badge">OK</div>
+    </div>
+  </div>
+</div>

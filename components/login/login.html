@@ -1,0 +1,38 @@
+<div class="login-wrapper">
+  <div class="card login-box fade-in">
+    
+    <div class="text-center brand-logo">
+      <div class="icon-logo">
+        <svg viewBox="0 0 24 24" width="60" height="60" stroke="#0d6efd" stroke-width="2" fill="none">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 16 16 12 12 8"></polyline>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-bold">Retail Tech</span> <span style="color: #198754;">Analytics</span>
+      </div>
+    </div>
+
+    <h2 class="login-title">Iniciar Sesión</h2>
+    
+    <div class="form-container">
+      <div class="form-group">
+        <label>Correo Electrónico</label>
+        <input type="email" class="form-control" value="admin@technova.motorIA.com.pe" readonly>
+      </div>
+
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" class="form-control" value="********" readonly>
+      </div>
+
+      <button class="btn-primary full-width-btn" (click)="ingresar()">Ingresar</button>
+      
+      <div class="text-center mt-3">
+        <a href="javascript:void(0)" (click)="irRecuperar()" class="link-muted">¿Olvidaste tu contraseña?</a>
+      </div>
+    </div>
+
+  </div>
+</div>

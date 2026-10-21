@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laptops Retail Lima - Tienda Oficial de Cómputo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Barra de Navegación B2C -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">Laptops Retail Lima</div>
+      <div class="search-box">
+        <input type="text" id="search-input" value="laptops i5 gamer" placeholder="Buscar laptops, marcas o accesorios...">
+        <button id="search-btn">Buscar</button>
+      </div>
+      <div class="nav-actions">
+        <button class="cart-btn" id="cart-btn">
+          Carrito (<span id="cart-count">0</span>) - <strong id="cart-total">S/ 0.00</strong>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Banner Promocional -->
+  <section class="hero-banner">
+    <div class="banner-content">
+      <span class="badge-promo">CYBER TECNOLOGÍA 2026</span>
+      <h1>Laptops Gamer de Última Generación</h1>
+      <p>Aprovecha precios exclusivos con entregas inmediatas en todo Lima Metropolitana.</p>
+    </div>
+  </section>
+
+  <!-- Contenido Principal -->
+  <main class="main-container">
+    
+    <!-- Barra de Estado y Filtros -->
+    <div class="catalog-header">
+      <h2>Catálogo Destacado</h2>
+      <div class="catalog-controls">
+        <button class="test-trigger-btn" id="btn-force-test" title="Simula inmediatamente la detección de abandono">
+          Probar Alerta IA Ahora
+        </button>
+      </div>
+    </div>
+
+    <!-- Grilla de Productos -->
+    <div class="products-grid" id="products-grid">
+      <!-- Producto 1: Lenovo Gamer i5 (Sugerido por IA - HU0039 / CP044) -->
+      <div class="product-card featured" data-sku="LENOVO-G5" data-name="Laptop Lenovo Gamer i5" data-price="4199.00">
+        <span class="ai-badge">Recomendado por IA</span>
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="Laptop Lenovo Gamer i5" class="product-img">
+        <h3 class="product-title">Laptop Lenovo Gamer i5 13va Gen</h3>
+        <p class="specs-mini">RTX 4060 8GB | 16GB RAM | 512GB SSD</p>
+        <div class="price-row">
+          <span class="price-val">S/ 4,199.00</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-detail" onclick="openDetails('LENOVO-G5')">Ver Detalles</button>
+          <button class="btn-add-cart" onclick="addToCart('LENOVO-G5', 'Laptop Lenovo Gamer i5', 4199.00)">Añadir</button>
+        </div>
+      </div>
+
+      <!-- Producto 2: ASUS ROG Strix (Sin badge de IA para diferenciación CP044) -->
+      <div class="product-card" data-sku="ASUS-ROG" data-name="Laptop ASUS ROG Strix i7" data-price="5899.00">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="ASUS ROG Strix" class="product-img">
+        <h3 class="product-title">Laptop ASUS ROG Strix i7 13va</h3>
+        <p class="specs-mini">RTX 4070 8GB | 16GB RAM | 1TB SSD</p>
+        <div class="price-row">
+          <span class="price-val">S/ 5,899.00</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-detail" onclick="openDetails('ASUS-ROG')">Ver Detalles</button>
+          <button class="btn-add-cart" onclick="addToCart('ASUS-ROG', 'Laptop ASUS ROG Strix i7', 5899.00)">Añadir</button>
+        </div>
+      </div>
+
+      <!-- Producto 3: HP Victus (Sin badge de IA para diferenciación CP044) -->
+      <div class="product-card" data-sku="HP-VICTUS" data-name="Laptop HP Victus AMD R5" data-price="3249.00">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="HP Victus" class="product-img">
+        <h3 class="product-title">Laptop HP Victus AMD Ryzen 5</h3>
+        <p class="specs-mini">RTX 3050 6GB | 16GB RAM | 512GB SSD</p>
+        <div class="price-row">
+          <span class="price-val">S/ 3,249.00</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-detail" onclick="openDetails('HP-VICTUS')">Ver Detalles</button>
+          <button class="btn-add-cart" onclick="addToCart('HP-VICTUS', 'Laptop HP Victus AMD R5', 3249.00)">Añadir</button>
+        </div>
+      </div>
+
+      <!-- Producto 4: MSI Cyborg (Sin badge en catálogo general) -->
+      <div class="product-card" data-sku="MSI-CYBORG" data-name="Laptop MSI Cyborg i5" data-price="3899.00">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="MSI Cyborg" class="product-img">
+        <h3 class="product-title">Laptop MSI Cyborg 15 Intel i5</h3>
+        <p class="specs-mini">RTX 4050 6GB | 16GB RAM | 512GB SSD</p>
+        <div class="price-row">
+          <span class="price-val">S/ 3,899.00</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-detail" onclick="openDetails('MSI-CYBORG')">Ver Detalles</button>
+          <button class="btn-add-cart" onclick="addToCart('MSI-CYBORG', 'Laptop MSI Cyborg i5', 3899.00)">Añadir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bloque de Recomendación Dinámica del Motor IA (HU0038, HU0039 / CP043, CP044) -->
+    <div class="recommendations-section" style="margin-top: 40px; padding: 25px; background: white; border-radius: 12px; border: 1px solid #e9ecef;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+          <h2 style="font-size: 1.3rem; color: #1a1a1a; margin: 0;">Recomendados para ti por el Motor de IA</h2>
+          <small style="color: #6c757d;">Calculado en tiempo real según tu secuencia de navegación (Modelo GRU + XGBoost)</small>
+        </div>
+        <span style="background: #e8f5e9; color: #198754; font-weight: bold; font-size: 0.8rem; padding: 4px 10px; border-radius: 20px;">Ranking Personalizado</span>
+      </div>
+      <div class="products-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+        <div class="product-card featured" data-sku="LENOVO-G5" data-name="Laptop Lenovo Gamer i5" data-price="4199.00">
+          <span class="ai-badge">Recomendado por IA</span>
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="Lenovo Gamer i5" class="product-img">
+          <h3 class="product-title" style="font-size: 1rem;">Laptop Lenovo Gamer i5</h3>
+          <p class="specs-mini">RTX 4060 | 16GB RAM</p>
+          <div class="price-row"><span class="price-val">S/ 4,199.00</span></div>
+          <button class="btn-detail" onclick="openDetails('LENOVO-G5')" style="width: 100%; margin-top: 8px;">Ver Detalles</button>
+        </div>
+        <div class="product-card featured" data-sku="MSI-CYBORG" data-name="Laptop MSI Cyborg i5" data-price="3899.00">
+          <span class="ai-badge" style="background: #6f42c1;">Recomendado por IA</span>
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="MSI Cyborg" class="product-img">
+          <h3 class="product-title" style="font-size: 1rem;">Laptop MSI Cyborg i5</h3>
+          <p class="specs-mini">RTX 4050 | 16GB RAM</p>
+          <div class="price-row"><span class="price-val">S/ 3,899.00</span></div>
+          <button class="btn-detail" onclick="openDetails('MSI-CYBORG')" style="width: 100%; margin-top: 8px;">Ver Detalles</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal de Ficha Técnica Detallada (Aquí se activa el monitoreo de inactividad de 8 segundos) -->
+  <div class="detail-modal" id="detail-modal">
+    <div class="detail-content">
+      <button class="detail-close" onclick="closeDetails()">×</button>
+      <div class="detail-layout">
+        <div class="detail-left">
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="Detalle Laptop" class="detail-img">
+        </div>
+        <div class="detail-right">
+          <span class="detail-tag">ALTA DEMANDA</span>
+          <h2 id="detail-title">Laptop Lenovo Gamer i5 13va Gen</h2>
+          <p class="detail-desc">Diseñada para máximo rendimiento en gaming y edición profesional con arquitectura híbrida de 10 núcleos.</p>
+          <div class="specs-table">
+            <div class="spec-row"><span>Procesador:</span> <strong>Intel Core i5-13420H (13va Gen)</strong></div>
+            <div class="spec-row"><span>Memoria RAM:</span> <strong>16 GB DDR5 5200MHz</strong></div>
+            <div class="spec-row"><span>Tarjeta Gráfica:</span> <strong>NVIDIA GeForce RTX 4060 8GB GDDR6</strong></div>
+            <div class="spec-row"><span>Almacenamiento:</span> <strong>512 GB SSD M.2 NVMe PCIe 4.0</strong></div>
+            <div class="spec-row"><span>Pantalla:</span> <strong>15.6" Full HD (1920x1080) 144Hz IPS</strong></div>
+          </div>
+          <div class="detail-price-box">
+            <span class="detail-price-label">Precio contado:</span>
+            <span class="detail-price-amount" id="detail-price">S/ 4,199.00</span>
+          </div>
+          <div class="detail-actions">
+            <button class="btn-buy-now" id="btn-detail-add">Añadir al Carrito</button>
+            <button class="btn-back" onclick="closeDetails()">Volver al Catálogo</button>
+          </div>
+          <p class="ia-instruction-note">
+            <em>Nota de demostración: Si permaneces <strong>8 segundos sin mover el cursor</strong> o intentas salir de la pestaña, el motor de IA detectará riesgo de abandono y desplegará la oferta personalizada con 30% de descuento.</em>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carrito Lateral Deslizable -->
+  <div class="cart-drawer" id="cart-drawer">
+    <div class="cart-header">
+      <h3>Carrito de Compras</h3>
+      <button class="cart-close" id="cart-close-btn">×</button>
+    </div>
+    <div class="cart-items" id="cart-items-list">
+      <div class="cart-empty">Tu carrito está vacío actualmente.</div>
+    </div>
+    <div class="cart-footer">
+      <div class="cart-summary-line">
+        <span>Subtotal:</span>
+        <span id="cart-subtotal">S/ 0.00</span>
+      </div>
+      <div class="cart-summary-line discount-line" id="discount-row" style="display: none; color: #198754; font-weight: bold;">
+        <span>Descuento IA (30%):</span>
+        <span id="cart-discount">-S/ 0.00</span>
+      </div>
+      <div class="cart-summary-line total-line">
+        <span>Total a Pagar:</span>
+        <strong id="cart-grand-total">S/ 0.00</strong>
+      </div>
+      <button class="btn-checkout" onclick="checkout()">Finalizar Compra Segura</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="store.js"></script>
+
+  <!-- SDK DE TECHNOVA: 1 SOLA LÍNEA DE CÓDIGO INYECTADA -->
+  <script src="sdk/technova-sdk.js" data-retail-id="RT-001" data-api-url="http://localhost:8000" data-inactivity-seconds="8"></script>
+
+</body>
+</html>

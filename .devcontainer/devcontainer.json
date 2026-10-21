@@ -1,0 +1,14 @@
+{
+  "name": "TechNova Retail AI Engine (Codespaces)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "postCreateCommand": "pip install -r requirements.txt",
+  "postStartCommand": "nohup python backend_local/server.py > server.log 2>&1 &",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "TechNova SaaS + Tienda Web + DB Studio",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  }
+}

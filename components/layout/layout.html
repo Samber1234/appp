@@ -1,0 +1,15 @@
+<nav class="navbar">
+  <div class="brand">
+    <span style="font-weight: bold; color: var(--primary-blue);">RetailTech</span> Analytics
+  </div>
+  <ul class="nav-links">
+    <li><a routerLink="/app/inicio" routerLinkActive="active-link">Inicio</a></li>
+    <li><a routerLink="/app/configuracion" routerLinkActive="active-link">Configuración</a></li>
+    <li><a routerLink="/app/alertas" routerLinkActive="active-link">Alertas comerciales</a></li>
+  </ul>
+  <button class="btn-logout" routerLink="/login">Salir</button>
+</nav>
+
+<main class="content-container">
+  <router-outlet></router-outlet>
+</main>

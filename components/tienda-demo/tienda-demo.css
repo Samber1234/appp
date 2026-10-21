@@ -1,0 +1,68 @@
+/* Animación de entrada llamativa para el Pop-up */
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); opacity: 1; }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.bounce-in {
+  animation: bounceIn 0.6s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
+}
+
+/* Estilos de la Tienda Falsa */
+.b2c-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 15px 40px; background: #2c3e50; color: white;
+}
+.b2c-logo { font-size: 1.2rem; font-weight: bold; }
+.b2c-search-bar { display: flex; width: 40%; }
+.b2c-search-bar input { flex: 1; padding: 10px; border: none; border-radius: 4px 0 0 4px; outline: none;}
+.b2c-search-bar button { padding: 10px 20px; border: none; background: #0d6efd; color: white; cursor: pointer; border-radius: 0 4px 4px 0;}
+.b2c-main { padding: 40px; font-family: sans-serif; background: #f8f9fa; min-height: 100vh;}
+.b2c-hero { text-align: center; margin-bottom: 40px; }
+.b2c-hero h1 { font-size: 2.5rem; color: #1a1a1a; margin-bottom: 10px;}
+.b2c-hero p { color: #6c757d; font-size: 1.1rem; }
+
+.b2c-products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; max-width: 1000px; margin: 0 auto;}
+.b2c-product-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05);}
+.img-placeholder { height: 150px; background: #e9ecef; display: flex; align-items: center; justify-content: center; border-radius: 4px; margin-bottom: 15px; color: #adb5bd;}
+.price { font-size: 1.2rem; font-weight: bold; color: #198754; margin: 10px 0;}
+.add-cart { width: 100%; padding: 10px; background: #e9ecef; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;}
+.add-cart:hover { background: #dee2e6; }
+
+/* Estilos del Pop-up Real */
+.b2c-overlay {
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100vw; 
+  height: 100vh;
+  background: rgba(0,0,0,0.6); 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 9999; /* Asegúrate de que esto esté aquí */
+  backdrop-filter: blur(3px); 
+}
+.b2c-popup {
+  background: white; width: 90%; max-width: 450px; border-radius: 12px;
+  padding: 40px 30px; text-align: center; position: relative;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+}
+.popup-close { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 2rem; color: #adb5bd; cursor: pointer; }
+.popup-brand { font-weight: bold; font-size: 1rem; margin-bottom: 15px; }
+.popup-tag { display: inline-block; padding: 6px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-bottom: 20px; }
+.popup-title { margin: 0 0 15px 0; font-size: 1.5rem; color: #1a1a1a; line-height: 1.2; }
+.popup-text { font-size: 1rem; color: #495057; line-height: 1.5; margin-bottom: 25px; }
+.popup-timer { font-size: 0.95rem; font-weight: 700; margin-bottom: 20px; }
+.popup-cta { width: 100%; border: none; color: white; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: transform 0.2s; }
+.popup-cta:hover { transform: scale(1.02); }
+
+.ia-log-panel {
+  background: #1a252f; color: #27c93f; padding: 15px; border-radius: 8px;
+  font-family: 'Courier New', monospace; font-size: 0.8rem; margin-bottom: 20px;
+}
+.specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+.spec-item { padding: 10px; background: white; border: 1px solid #dee2e6; border-radius: 4px; }
+.bounce-in { animation: bounceIn 0.5s ease-out; }

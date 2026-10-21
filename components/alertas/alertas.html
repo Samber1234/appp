@@ -1,0 +1,145 @@
+<div class="alertas-layout">
+  
+  <div class="card config-panel delay-1">
+    <div class="panel-header">
+      <h2>Panel de Configuración de Plantilla</h2>
+      <p>Configura alertas comerciales automáticas</p>
+    </div>
+
+    <div class="form-scroll-area">
+      <div class="form-group row-align">
+        <label>Título del mensaje <span class="help-icon">?</span></label>
+        <input type="text" class="custom-input" [(ngModel)]="titulo">
+      </div>
+
+      <div class="form-group row-align">
+        <label>Cuerpo de la plantilla <span class="help-icon">?</span></label>
+        <textarea class="custom-input" rows="4" [(ngModel)]="cuerpo"></textarea>
+      </div>
+
+      <div class="form-group row-align">
+        <label>Texto del botón CTA <span class="help-icon">?</span></label>
+        <input type="text" class="custom-input" [(ngModel)]="ctaTexto">
+      </div>
+
+      <div class="form-group row-align">
+        <label>Diseño tipo <span class="help-icon">?</span></label>
+        <select class="custom-select">
+          <option>Centrado Pop-Up</option>
+          <option>Banner Inferior</option>
+          <option>Lateral Derecho</option>
+        </select>
+      </div>
+
+      <div class="form-group row-align">
+        <label>Color de acento <span class="help-icon">?</span></label>
+        <div class="color-picker-wrapper custom-input">
+          <input type="color" [(ngModel)]="colorAcento" class="color-picker">
+          <span>{{ colorAcento | uppercase }}</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="form-group row-align">
+        <label>Tiempo mínimo en página (seg) <span class="help-icon">?</span></label>
+        <input type="number" class="custom-input" [(ngModel)]="tiempoMinimo">
+      </div>
+
+      <div class="form-group row-align">
+        <label>Interacciones mínimas <span class="help-icon">?</span></label>
+        <input type="number" class="custom-input" [(ngModel)]="interacciones">
+      </div>
+
+      <div class="form-group row-align">
+        <label>Frecuencia en horas <span class="help-icon">?</span></label>
+        <input type="number" class="custom-input" [(ngModel)]="frecuencia">
+      </div>
+
+      <div class="form-group row-align toggle-row">
+        <label>Alerta activa <span class="help-icon">?</span></label>
+        <div class="toggle-container">
+          <span class="toggle-label">{{ alertaActiva ? 'Activa' : 'Inactiva' }}</span>
+          <label class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="alertaActiva">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary full-width-btn" (click)="guardarPlantilla()">
+      📄 Guardar y Actualizar Plantilla
+    </button>
+  </div>
+
+  <div class="right-column">
+    
+    <div class="card preview-panel delay-2">
+      <div class="panel-header">
+        <h2>Panel de Vista Previa (B2C)</h2>
+        <p>Así verá el cliente la alerta en tu sitio web</p>
+      </div>
+
+      <div class="browser-mockup">
+        <div class="browser-header">
+          <div class="browser-dots"><span></span><span></span><span></span></div>
+          <div class="browser-address">🔒 laptopsretail.com</div>
+        </div>
+        
+        <div class="browser-body">
+          <div class="mock-ecommerce">
+            <div class="mock-nav">
+              <div class="mock-logo">🛍️ Laptops Retail</div>
+              <div class="mock-search">Buscar laptops...</div>
+            </div>
+            <div class="mock-grid">
+              <div class="mock-product"></div>
+              <div class="mock-product"></div>
+              <div class="mock-product"></div>
+            </div>
+          </div>
+
+          <div class="popup-overlay" *ngIf="alertaActiva">
+            <div class="popup-box">
+              <button class="popup-close">×</button>
+              <div class="popup-brand" [style.color]="colorAcento">🛍️ Laptops Retail</div>
+              <span class="popup-tag" [style.backgroundColor]="colorAcento + '20'" [style.color]="colorAcento">🏷️ ¡Exclusivo para ti!</span>
+              
+              <h3 class="popup-title">{{ titulo }}</h3>
+              <p class="popup-text">{{ cuerpoPreview }}</p>
+              
+              <div class="popup-timer" [style.color]="colorAcento">⏱️ Válido por 5 minutos</div>
+              <button class="popup-cta" [style.backgroundColor]="colorAcento">{{ ctaTexto }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card status-panel delay-3">
+      <div class="status-item">
+        <span class="status-icon">🕒</span>
+        <div class="status-text">
+          <small>Última actualización</small>
+          <strong>hace 10 min</strong>
+        </div>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-icon">🌐</span>
+        <div class="status-text">
+          <small>Canal</small>
+          <strong>Web B2C</strong>
+        </div>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item justify-end">
+        <span class="status-badge" [class.inactive]="!alertaActiva">
+          {{ alertaActiva ? '✔ Estado: Activa' : '❌ Estado: Inactiva' }}
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>

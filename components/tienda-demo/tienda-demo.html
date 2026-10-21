@@ -1,0 +1,91 @@
+<nav class="b2c-nav">
+  <div class="b2c-logo">🛍️ Laptops Retail Lima</div>
+  <div class="b2c-search-bar">
+    <!-- Cambiamos el placeholder por un value real para simular la búsqueda ya ejecutada -->
+    <input type="text" value="laptops i5 gamer" style="color: #333; font-weight: 500; font-family: sans-serif;">
+    <button>🔍</button>
+  </div>
+  <div class="b2c-cart">🛒 Carrito (0)</div>
+</nav>
+
+<main class="b2c-main">
+  <!-- Log de la IA -->
+  <div class="ia-log-panel">
+    <small>⚙️ Motor Híbrido IA en tiempo real:</small>
+    <ul>
+      @for (evento of logEventos; track evento) {
+        <li>{{ evento }}</li>
+      }
+    </ul>
+  </div>
+
+  <div style="color: gray; font-size: 10px; margin-bottom: 10px;">
+    Estado IA: {{ verDetalles ? 'Monitoreando' : 'Esperando' }}
+  </div>
+
+  @if (!verDetalles) {
+    <div class="b2c-products-grid">
+      
+      <!-- PRODUCTO 1: LENOVO GAMER I5 (El único funcional para la IA) -->
+      <div class="b2c-product-card" style="border: 2px solid #0d6efd; position: relative;">
+        <span style="position: absolute; top: 10px; left: 10px; background: #0d6efd; color: white; font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: bold;">TEST PRODUCT</span>
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="Laptop Lenovo Gamer i5" class="product-image">
+        <h3>Laptop Lenovo Gamer i5</h3>
+        <p class="price" style="color: #198754; font-weight: bold; margin: 10px 0;">S/ 4,199.00</p>
+        <button class="add-cart" (click)="verDetallesLaptop()">Ver Detalles</button>
+      </div>
+
+      <!-- PRODUCTO 2: ASUS ROG STRIX (Solo demostrativo) -->
+      <div class="b2c-product-card">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="Laptop Lenovo Gamer i5" class="product-image">
+        <h3>Laptop ASUS ROG Strix i5</h3>
+        <p class="price" style="color: #198754; font-weight: bold; margin: 10px 0;">S/ 5,899.00</p>
+        <button class="add-cart" style="background: #e9ecef; color: #6c757d; cursor: not-allowed;">Ver Detalles</button>
+      </div>
+
+      <!-- PRODUCTO 3: HP VICTUS (Solo demostrativo) -->
+      <div class="b2c-product-card">
+       <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="Laptop Lenovo Gamer i5" class="product-image">
+        <h3>Laptop HP Victus AMD R5</h3>
+        <p class="price" style="color: #198754; font-weight: bold; margin: 10px 0;">S/ 3,249.00</p>
+        <button class="add-cart" style="background: #e9ecef; color: #6c757d; cursor: not-allowed;">Ver Detalles</button>
+      </div>
+
+      <!-- PRODUCTO 4: MSI CYBORG (Solo demostrativo) -->
+      <div class="b2c-product-card">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7Gjrj-LCXYd8zObb6FE7UG76Y5jvGl1Qejw&s" alt="Laptop Lenovo Gamer i5" class="product-image">
+        <h3>Laptop MSI Cyborg i5</h3>
+        <p class="price" style="color: #198754; font-weight: bold; margin: 10px 0;">S/ 3,899.00</p>
+        <button class="add-cart" style="background: #e9ecef; color: #6c757d; cursor: not-allowed;">Ver Detalles</button>
+      </div>
+
+    </div>
+  } @else {
+    <div class="b2c-details-page bounce-in">
+      <h2>Lenovo Gamer i5 - Especificaciones</h2>
+      <div class="specs-grid">
+        <div class="spec-item"><strong>Procesador:</strong> Intel Core i5 13va Gen</div>
+        <div class="spec-item"><strong>RAM:</strong> 16GB DDR5</div>
+        <div class="spec-item"><strong>GPU:</strong> NVIDIA RTX 4060 8GB</div>
+        <div class="spec-item"><strong>Almacenamiento:</strong> 512GB SSD NVMe</div>
+      </div>
+      <button class="add-cart" style="background: #0d6efd; color: white;">Añadir al Carrito</button>
+    </div>
+  }
+</main>
+
+@if (mostrarAlerta) {
+  <div class="b2c-overlay">
+    <div class="b2c-popup bounce-in">
+      <button class="popup-close" (click)="cerrarAlerta()">×</button>
+      <div class="popup-brand" style="color: #198754;">🛍️ Laptops Retail</div>
+      <span class="popup-tag" style="background-color: #d1e7dd; color: #198754;">🏷️ ¡Exclusivo para ti!</span>
+      
+      <h3 class="popup-title">¡Oferta personalizada exclusiva para ti!</h3>
+      <p class="popup-text">Hola Giancarlo, detectamos interés en la <strong>Laptop Lenovo Gamer 5i</strong> y queremos ofrecerte un 30% de descuento si finalizas tu compra ahora.</p>
+      
+      <div class="popup-timer" style="color: #198754;">⏱️ Válido por 05:00 minutos</div>
+      <button class="popup-cta" style="background-color: #198754;" (click)="comprarOferta()">Comprar ahora</button>
+    </div>
+  </div>
+}

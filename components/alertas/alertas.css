@@ -1,0 +1,135 @@
+/* Animación base */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.delay-1 { animation: fadeSlideUp 0.5s forwards 0.1s; opacity: 0; }
+.delay-2 { animation: fadeSlideUp 0.5s forwards 0.2s; opacity: 0; }
+.delay-3 { animation: fadeSlideUp 0.5s forwards 0.3s; opacity: 0; }
+
+.alertas-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 25px;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-header h2 {
+  font-size: 1.1rem;
+  color: #1a1a1a;
+  margin: 0 0 5px 0;
+}
+.panel-header p {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin: 0 0 25px 0;
+}
+
+/* --- Panel Izquierdo --- */
+.config-panel { padding: 25px; display: flex; flex-direction: column; }
+.form-scroll-area { flex: 1; }
+
+.row-align { display: flex; align-items: center; margin-bottom: 15px; }
+.row-align label { 
+  width: 45%; font-size: 0.85rem; color: #495057; font-weight: 500; 
+  display: flex; align-items: center; gap: 5px;
+}
+.help-icon {
+  display: inline-flex; justify-content: center; align-items: center;
+  width: 14px; height: 14px; border-radius: 50%; border: 1px solid #adb5bd;
+  color: #adb5bd; font-size: 0.6rem; cursor: help;
+}
+
+.custom-input, .custom-select {
+  flex: 1; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 8px;
+  font-family: inherit; font-size: 0.9rem; outline: none; transition: 0.2s;
+}
+.custom-input:focus { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.1); }
+
+.color-picker-wrapper { display: flex; align-items: center; gap: 10px; padding: 5px 12px; }
+.color-picker { border: none; width: 30px; height: 30px; padding: 0; cursor: pointer; background: none; }
+
+.divider { border: 0; border-top: 1px dashed #dee2e6; margin: 25px 0; }
+
+.toggle-row { justify-content: space-between; }
+.toggle-container { display: flex; align-items: center; gap: 15px; }
+.toggle-label { font-size: 0.85rem; color: #495057; }
+.toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 24px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+input:checked + .slider { background-color: #0d6efd; }
+input:checked + .slider:before { transform: translateX(20px); }
+
+.full-width-btn { margin-top: 25px; padding: 12px; border-radius: 8px; font-size: 1rem; }
+
+/* --- Navegador Falso (Vista Previa) --- */
+.preview-panel { padding: 25px; flex: 1; display: flex; flex-direction: column; }
+.browser-mockup {
+  border: 1px solid #dee2e6; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08); flex: 1; display: flex; flex-direction: column;
+}
+.browser-header {
+  background: #2c3e50; padding: 10px 15px; display: flex; align-items: center; gap: 15px;
+}
+.browser-dots { display: flex; gap: 6px; }
+.browser-dots span { width: 10px; height: 10px; border-radius: 50%; background: #ff5f56; }
+.browser-dots span:nth-child(2) { background: #ffbd2e; }
+.browser-dots span:nth-child(3) { background: #27c93f; }
+.browser-address {
+  background: #1a252f; color: #fff; font-size: 0.75rem; padding: 4px 0;
+  border-radius: 4px; text-align: center; flex: 1; letter-spacing: 0.5px;
+}
+
+.browser-body {
+  position: relative; background: #f8f9fa; flex: 1; min-height: 400px;
+}
+
+/* Fake Ecommerce Background */
+.mock-ecommerce { padding: 20px; opacity: 0.6; filter: blur(2px); pointer-events: none; }
+.mock-nav { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.mock-logo { font-weight: bold; color: #2c3e50; }
+.mock-search { background: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; color: #adb5bd; width: 40%; border: 1px solid #e9ecef; }
+.mock-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.mock-product { background: white; height: 120px; border-radius: 8px; border: 1px solid #e9ecef; }
+
+/* Pop-Up B2C (El protagonista) */
+.popup-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center;
+}
+.popup-box {
+  background: white; width: 85%; max-width: 400px; border-radius: 12px;
+  padding: 30px 25px; text-align: center; position: relative;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+  animation: fadeSlideUp 0.4s ease-out;
+}
+.popup-close { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 1.5rem; color: #adb5bd; cursor: pointer; }
+.popup-brand { font-weight: bold; font-size: 0.9rem; margin-bottom: 15px; }
+.popup-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px; }
+.popup-title { margin: 0 0 15px 0; font-size: 1.3rem; color: #1a1a1a; line-height: 1.2; }
+.popup-text { font-size: 0.9rem; color: #6c757d; line-height: 1.5; margin-bottom: 20px; }
+.popup-timer { font-size: 0.85rem; font-weight: 600; margin-bottom: 15px; }
+.popup-cta { width: 100%; border: none; color: white; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: opacity 0.2s; }
+.popup-cta:hover { opacity: 0.9; }
+
+/* --- Panel de Estado --- */
+.status-panel { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; }
+.status-item { display: flex; align-items: center; gap: 12px; flex: 1; }
+.status-divider { width: 1px; height: 30px; background: #dee2e6; margin: 0 20px; }
+.status-text { display: flex; flex-direction: column; }
+.status-text small { font-size: 0.7rem; color: #6c757d; }
+.status-text strong { font-size: 0.85rem; color: #2c3e50; }
+.justify-end { justify-content: flex-end; }
+.status-badge { background: #d1e7dd; color: #0f5132; padding: 6px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+.status-badge.inactive { background: #f8d7da; color: #842029; }
+
+@media (max-width: 1100px) {
+  .alertas-layout { grid-template-columns: 1fr; }
+}
