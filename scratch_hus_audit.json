@@ -1,0 +1,492 @@
+[
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU001",
+    "caracteristica": "Registrar cuenta de tienda.",
+    "razon": "Para afiliar mi comercio retail a la plataforma de ofertas y motor de IA.",
+    "esc_num": 1,
+    "dado": "Registro válido de tienda retail.",
+    "cuando": "Dado que soy un administrador de una nueva tienda retail asociada al servicio.",
+    "entonces": "Cuando complete el formulario con nombre de empresa, correo y contraseña válida y presione 'Crear cuenta'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU002",
+    "caracteristica": "Iniciar sesión en la plataforma.",
+    "razon": "Para acceder al panel de control y administrar alertas y métricas.",
+    "esc_num": 1,
+    "dado": "Login exitoso con credenciales válidas.",
+    "cuando": "Dado que el administrador de la tienda está en la pantalla de Login.",
+    "entonces": "Cuando ingrese credenciales válidas y presione 'Iniciar sesión'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU003",
+    "caracteristica": "Cerrar sesión de forma segura.",
+    "razon": "Para proteger los datos de mi tienda al terminar de usar el sistema.",
+    "esc_num": 1,
+    "dado": "Logout seguro e invalidación de sesión.",
+    "cuando": "Dado que tengo una sesión activa en el panel de control.",
+    "entonces": "Cuando presione la opción 'Cerrar sesión'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU004",
+    "caracteristica": "Recuperar contraseña por correo electrónico.",
+    "razon": "Para restablecer el acceso a mi cuenta en caso de olvido.",
+    "esc_num": 1,
+    "dado": "Solicitud de recuperación de contraseña exitosa.",
+    "cuando": "Dado que el usuario accede a la vista de recuperación en '/recuperar'.",
+    "entonces": "Cuando ingrese su correo corporativo y presione 'Enviar enlace'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU005",
+    "caracteristica": "Actualizar perfil y datos de contacto de la tienda.",
+    "razon": "Para mantener actualizada la razón social y teléfono de mi comercio en la plataforma.",
+    "esc_num": 1,
+    "dado": "Actualización exitosa de perfil de tienda.",
+    "cuando": "Dado que el administrador está en la sección de Perfil de Usuario en Configuración.",
+    "entonces": "Cuando modifique el nombre comercial o teléfono y pulse 'Actualizar Datos'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU006",
+    "caracteristica": "Actualizar contraseña de acceso.",
+    "razon": "Para garantizar la seguridad periódica de mi cuenta administrativa.",
+    "esc_num": 1,
+    "dado": "Cambio de contraseña exitoso.",
+    "cuando": "Dado que el administrador se encuentra en Seguridad y Contraseña en Configuración.",
+    "entonces": "Cuando ingrese su contraseña actual y una nueva contraseña coincidente con su confirmación."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU007",
+    "caracteristica": "Consultar y copiar la API Key de integración.",
+    "razon": "Para conectar mediante API la tienda externa con el motor de IA de la plataforma.",
+    "esc_num": 1,
+    "dado": "Consulta y copiado de API Key asignada.",
+    "cuando": "Dado que el administrador accede al módulo 'Integración del Motor IA' en Configuración.",
+    "entonces": "Cuando visualice el campo de API Key ('sk_live_****') y haga clic en el ícono de copiar."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU008",
+    "caracteristica": "Validar Retail ID en solicitudes API externas.",
+    "razon": "Para garantizar el aislamiento multitienda y autorizar operaciones de la tienda asociada.",
+    "esc_num": 1,
+    "dado": "Validación de Retail ID en llamadas API.",
+    "cuando": "Dado que una tienda externa (ej. Laptops Retail Lima) invoca endpoints de la plataforma.",
+    "entonces": "Cuando incluya el encabezado 'X-Retail-ID: RT-001' junto a la API Key válida."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU009",
+    "caracteristica": "Sincronizar catálogo de productos de la tienda externa vía API.",
+    "razon": "Para alimentar el modelo XGBoost con los productos y precios vigentes en la tienda asociada.",
+    "esc_num": 1,
+    "dado": "Ingesta de catálogo por API REST.",
+    "cuando": "Dado que la tienda externa actualiza sus productos o precios en su propio e-commerce.",
+    "entonces": "Cuando despache un payload JSON al endpoint '/api/v1/retail/catalog-sync'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU010",
+    "caracteristica": "Cargar datos históricos de navegación y ventas en CSV.",
+    "razon": "Para entrenar inicialmente los modelos de IA con el historial previo de mi tienda.",
+    "esc_num": 1,
+    "dado": "Carga de archivo CSV válida.",
+    "cuando": "Dado que el administrador dispone de un archivo CSV con transacciones históricas.",
+    "entonces": "Cuando seleccione el archivo CSV válido y presione 'Subir archivo'."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU011",
+    "caracteristica": "Limpiar y preprocesar datos históricos.",
+    "razon": "Para preparar conjuntos estructurados sin ruido ni valores nulos para GRU y XGBoost.",
+    "esc_num": 1,
+    "dado": "Limpieza y normalización de registros.",
+    "cuando": "Dado que existen registros en la tabla temporal tras una carga masiva.",
+    "entonces": "Cuando se inicie la rutina automatizada de preprocesamiento."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU012",
+    "caracteristica": "Ingestar eventos de navegación en tiempo real en DynamoDB.",
+    "razon": "Para registrar el clickstream de alta concurrencia con latencia menor a 40ms.",
+    "esc_num": 1,
+    "dado": "Tracking de vista de producto en DynamoDB.",
+    "cuando": "Dado que un comprador navega en la tienda externa y entra a la ficha de una laptop.",
+    "entonces": "Cuando el script de la tienda externa envíe el evento 'product_view' a la API."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU013",
+    "caracteristica": "Anonimizar telemetría bajo la Ley Nº 29733 (Protección de Datos).",
+    "razon": "Para garantizar la privacidad del consumidor y el cumplimiento ético-normativo en la ingesta.",
+    "esc_num": 1,
+    "dado": "Anonimización y encriptación de datos conductuales.",
+    "cuando": "Dado que el script de telemetría recopila eventos de navegación en la tienda externa.",
+    "entonces": "Cuando la API procese el payload antes de persistir en DynamoDB."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU014",
+    "caracteristica": "Garantizar tolerancia a fallos con Offline Buffer en tienda externa.",
+    "razon": "Para no perder eventos de telemetría si la conexión del usuario sufre microcortes.",
+    "esc_num": 1,
+    "dado": "Almacenamiento en buffer local y reintento.",
+    "cuando": "Dado que la conexión de red del comprador falla transitoriamente mientras navega.",
+    "entonces": "Cuando el script intente enviar un evento de vista y falle la petición HTTP."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU015",
+    "caracteristica": "Unificar historial anónimo con usuario autenticado.",
+    "razon": "Para no perder las interacciones previas al login cuando el cliente se identifique.",
+    "esc_num": 1,
+    "dado": "Fusión de sesiones anónima e identificada.",
+    "cuando": "Dado que un comprador navegó de forma anónima acumulando clics y vistas.",
+    "entonces": "Cuando inicie sesión con su cuenta en la tienda externa."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU016",
+    "caracteristica": "Monitorear estado de servicios y sincronización API.",
+    "razon": "Para verificar la salud operativa del motor de IA y refrescar la conexión.",
+    "esc_num": 1,
+    "dado": "Verificación de salud y refresco de sincronización.",
+    "cuando": "Dado que el administrador está en 'Integración del Motor IA' en Configuración.",
+    "entonces": "Cuando presione el botón '🔄 Refrescar Conexión'."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU017",
+    "caracteristica": "Medir tiempo de permanencia e inactividad en página.",
+    "razon": "Para alimentar el algoritmo detector de indecisión o riesgo de abandono.",
+    "esc_num": 1,
+    "dado": "Cálculo de inactividad de usuario en ficha técnica.",
+    "cuando": "Dado que el comprador se encuentra en una ficha de producto en la tienda externa.",
+    "entonces": "Cuando cese las interacciones por un lapso continuo."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU018",
+    "caracteristica": "Entrenar modelo de secuencias temporales (GRU).",
+    "razon": "Para predecir la próxima categoría de interés basándose en la navegación del cliente.",
+    "esc_num": 1,
+    "dado": "Entrenamiento exitoso de red neuronal GRU.",
+    "cuando": "Dado que el pipeline de ML procesa las secuencias históricas de clics.",
+    "entonces": "Cuando se ejecute el entrenamiento de la red recurrente GRU."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU019",
+    "caracteristica": "Entrenar modelo tabular (XGBoost).",
+    "razon": "Para rankear productos y estimar la propensión de compra con características estáticas.",
+    "esc_num": 1,
+    "dado": "Entrenamiento exitoso de modelo XGBoost.",
+    "cuando": "Dado que el pipeline de ML procesa la matriz tabular de productos y atributos.",
+    "entonces": "When se entrene el clasificador XGBoost."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU020",
+    "caracteristica": "Ejecutar pipeline de inferencia híbrida (GRU + XGBoost).",
+    "razon": "Para combinar la categoría predicha por GRU con el ranking de productos de XGBoost.",
+    "esc_num": 1,
+    "dado": "Inferencia híbrida en cascada en SageMaker.",
+    "cuando": "Dado que se recibe la sesión y el historial reciente de un comprador.",
+    "entonces": "Cuando el backend procese la solicitud de inferencia."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU021",
+    "caracteristica": "Proveer API endpoint de baja latencia (<40ms / <200ms) para ofertas.",
+    "razon": "Para responder a la tienda externa de forma reactiva sin degradar la experiencia.",
+    "esc_num": 1,
+    "dado": "Respuesta de API de ofertas en tiempo real.",
+    "cuando": "Dado que la tienda externa solicita la evaluación de oferta por inactividad.",
+    "entonces": "Cuando invoque el endpoint '/api/v1/ml/predict-offer'."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU022",
+    "caracteristica": "Aplicar fallback (Cold Start) para compradores sin historial.",
+    "razon": "Para entregar una oferta con los productos más vendidos cuando no haya datos previos del visitante.",
+    "esc_num": 1,
+    "dado": "Activación de fallback con productos destacados.",
+    "cuando": "Dado que un comprador nuevo ingresa a la tienda externa sin historial previo.",
+    "entonces": "Cuando la API evalúe la oferta para esta sesión fría (cold start)."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU023",
+    "caracteristica": "Visualizar métricas técnicas de precisión (F1-Score, Recall, Matriz de Confusión).",
+    "razon": "Para auditar la calidad predictiva de la IA que atiende mi tienda.",
+    "esc_num": 1,
+    "dado": "Consulta de F1-Score y Recall en el panel técnico.",
+    "cuando": "Dado que el administrador accede al reporte de Rendimiento de ML.",
+    "entonces": "Cuando revise la ficha del modelo activo."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU024",
+    "caracteristica": "Gatillar re-entrenamiento automático periódico.",
+    "razon": "Para adaptar los modelos de IA a las nuevas tendencias de compra semanalmente.",
+    "esc_num": 1,
+    "dado": "Ejecución de cronjob semanal de re-entrenamiento.",
+    "cuando": "Dado que transcurrieron 7 días desde el último entreno y el reloj marca las 00:00.",
+    "entonces": "Cuando el cronjob programado se dispare automáticamente."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU025",
+    "caracteristica": "Actualizar vector de contexto en memoria rápida (Caché).",
+    "razon": "Para que la siguiente predicción responda de inmediato al último clic sin demoras de base de datos.",
+    "esc_num": 1,
+    "dado": "Actualización de caché de sesión en tiempo real.",
+    "cuando": "Dado que el comprador hace un nuevo clic en la tienda externa.",
+    "entonces": "Cuando el evento ingrese al backend."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU026",
+    "caracteristica": "Configurar plantilla de textos para la alerta comercial.",
+    "razon": "Para personalizar el título, cuerpo persuasivo y texto del botón de la ventana de oferta.",
+    "esc_num": 1,
+    "dado": "Personalización de textos y botón CTA.",
+    "cuando": "Dado que el administrador está en el Panel de Configuración de Plantilla en '/app/alertas'.",
+    "entonces": "Cuando ingrese Título, Cuerpo y Texto CTA ('Comprar ahora') y pulse 'Guardar'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU027",
+    "caracteristica": "Seleccionar el formato visual de la ventana de oferta.",
+    "razon": "Para elegir si la oferta se mostrará como Pop-Up centrado, Banner inferior o Lateral derecho.",
+    "esc_num": 1,
+    "dado": "Cambio de diseño visual de la alerta comercial.",
+    "cuando": "Dado que el administrador se encuentra configurando la plantilla en '/app/alertas'.",
+    "entonces": "Cuando seleccione 'Centrado Pop-Up', 'Banner Inferior' o 'Lateral Derecho' en el combo."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU028",
+    "caracteristica": "Personalizar el color de acento y branding de la oferta.",
+    "razon": "Para alinear los botones y distintivos de la alerta con los colores institucionales de mi tienda.",
+    "esc_num": 1,
+    "dado": "Selección de color de acento con color picker.",
+    "cuando": "Dado que el administrador desea adaptar los colores de la alerta a su marca.",
+    "entonces": "Cuando elija un color en el selector cromático (ej. '#198754') y guarde."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU029",
+    "caracteristica": "Configurar tiempo mínimo de permanencia o inactividad.",
+    "razon": "Para definir cuántos segundos debe esperar el sistema antes de evaluar el riesgo de abandono.",
+    "esc_num": 1,
+    "dado": "Ajuste del umbral de tiempo mínimo en página.",
+    "cuando": "Dado que el administrador configura los disparadores en '/app/alertas'.",
+    "entonces": "Cuando establezca 'Tiempo mínimo en página (seg)' en 8 segundos y guarde."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU030",
+    "caracteristica": "Configurar umbral mínimo de interacciones requeridas.",
+    "razon": "Para asegurar que la oferta solo se muestre a usuarios con interés real en navegar el sitio.",
+    "esc_num": 1,
+    "dado": "Ajuste de interacciones mínimas del visitante.",
+    "cuando": "Dado que el administrador desea filtrar visitantes accidentales.",
+    "entonces": "Cuando configure 'Interacciones mínimas' en 3 y guarde."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU031",
+    "caracteristica": "Configurar frecuencia límite de despliegue en horas.",
+    "razon": "Para evitar la sobreexposición y no mostrar la misma oferta repetidas veces al mismo comprador.",
+    "esc_num": 1,
+    "dado": "Establecimiento de límite de frecuencia en horas.",
+    "cuando": "Dado que el administrador configura el control de saturación comercial.",
+    "entonces": "When fije el campo 'Frecuencia en horas' en 24 y guarde."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU032",
+    "caracteristica": "Activar o pausar la campaña de alertas comerciales.",
+    "razon": "Para encender o apagar de inmediato las ventanas de oferta en la tienda externa.",
+    "esc_num": 1,
+    "dado": "Pausar campaña comercial mediante conmutador.",
+    "cuando": "Dado que la alerta comercial se encuentra actualmente activa.",
+    "entonces": "Cuando el administrador desmarque el toggle 'Alerta activa' y guarde."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU033",
+    "caracteristica": "Visualizar vista previa interactiva (B2C Live Preview) en tiempo real.",
+    "razon": "Para previsualizar exactamente cómo verá el comprador la oferta en el sitio web de la tienda.",
+    "esc_num": 1,
+    "dado": "Actualización reactiva de la maqueta B2C.",
+    "cuando": "Dado que el administrador está modificando textos o colores en el formulario.",
+    "entonces": "Cuando teclee nuevo contenido en los campos del panel."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU034",
+    "caracteristica": "Monitorear inactividad en tienda externa y consultar oferta vía API.",
+    "razon": "Para detectar en tiempo real el riesgo de abandono y solicitar el contenido de la oferta.",
+    "esc_num": 1,
+    "dado": "Gatillado de alerta tras 8 segundos de inactividad.",
+    "cuando": "Dado que un comprador se encuentra en '/tienda' viendo la Laptop Lenovo Gamer i5.",
+    "entonces": "Cuando transcurran 8 segundos sin interacción."
+  },
+  {
+    "id": "Como Comprador.",
+    "rol": "HU035",
+    "caracteristica": "Visualizar la ventana modal de oferta personalizada en la tienda.",
+    "razon": "Para enterarme de una promoción exclusiva en el producto que estaba evaluando.",
+    "esc_num": 1,
+    "dado": "Despliegue de ventana emergente con descuento.",
+    "cuando": "Dado que el sistema detectó riesgo de abandono en la tienda externa.",
+    "entonces": "Cuando se procese la respuesta de la oferta comercial."
+  },
+  {
+    "id": "Como Comprador.",
+    "rol": "HU036",
+    "caracteristica": "Visualizar temporizador de urgencia en la ventana de oferta.",
+    "razon": "Para conocer el tiempo de validez de la promoción antes de que expire.",
+    "esc_num": 1,
+    "dado": "Exhibición de temporizador de 5 minutos.",
+    "cuando": "Dado que el modal de oferta personalizada está abierto en la tienda.",
+    "entonces": "Cuando el comprador examine las condiciones de la oferta."
+  },
+  {
+    "id": "Como Comprador.",
+    "rol": "HU037",
+    "caracteristica": "Comprar la oferta directamente con el botón de llamado a la acción (CTA).",
+    "razon": "Para aprovechar el 30% de descuento y finalizar mi compra con éxito.",
+    "esc_num": 1,
+    "dado": "Conversión exitosa al presionar 'Comprar ahora'.",
+    "cuando": "Dado que el comprador visualiza la oferta en la tienda externa.",
+    "entonces": "Cuando presione el botón 'Comprar ahora'."
+  },
+  {
+    "id": "Como Comprador.",
+    "rol": "HU038",
+    "caracteristica": "Cerrar la ventana de oferta voluntariamente.",
+    "razon": "Para continuar navegando sin la ventana emergente si no deseo la promoción.",
+    "esc_num": 1,
+    "dado": "Cierre manual de la ventana y respeto de frecuencia.",
+    "cuando": "Dado que el pop-up de oferta está visible en la tienda externa.",
+    "entonces": "Cuando el comprador haga clic en el botón de cerrar ('×')."
+  },
+  {
+    "id": "Como Comprador.",
+    "rol": "HU039",
+    "caracteristica": "Ver bloques de recomendación dinámica de productos en la tienda.",
+    "razon": "Para encontrar productos alternativos y accesorios relevantes sugeridos por la IA.",
+    "esc_num": 1,
+    "dado": "Despliegue de productos recomendados en catálogo externo.",
+    "cuando": "Dado que el comprador ingresa a la tienda externa conectada.",
+    "entonces": "Cuando cargue el catálogo o la vista de productos."
+  },
+  {
+    "id": "Como Comprador.",
+    "rol": "HU040",
+    "caracteristica": "Ver badge distintivo en productos recomendados por la IA.",
+    "razon": "Para reconocer rápidamente qué productos son recomendaciones inteligentes.",
+    "esc_num": 1,
+    "dado": "Renderizado de badge 'TEST PRODUCT' / 'Recomendado'.",
+    "cuando": "Dado que un producto ha sido priorizado por el motor predictivo de la plataforma.",
+    "entonces": "When se pinte en la grilla de la tienda externa."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU041",
+    "caracteristica": "Visualizar KPIs ejecutivos en el Dashboard principal.",
+    "razon": "Para evaluar los ingresos recuperados (S/ 18,450), tasa de conversión y reducción de abandono.",
+    "esc_num": 1,
+    "dado": "Despliegue de tarjetas de métricas y KPIs consolidados.",
+    "cuando": "Dado que el administrador ingresa a '/app/inicio'.",
+    "entonces": "Cuando cargue el Dashboard ejecutivo."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU042",
+    "caracteristica": "Visualizar gráfico de tendencia semanal de conversión y abandono.",
+    "razon": "Para contrastar la evolución diaria de las compras versus el abandono de carritos.",
+    "esc_num": 1,
+    "dado": "Renderizado de gráfico de líneas comparativo.",
+    "cuando": "Dado que el administrador está en el Dashboard analítico.",
+    "entonces": "Cuando visualice la tarjeta 'Tendencia Semanal de Conversión y Abandono'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU043",
+    "caracteristica": "Visualizar gráfico Donut de distribución de resultados de sesión.",
+    "razon": "Para entender la proporción de compras logradas, abandonos y ofertas recuperadas.",
+    "esc_num": 1,
+    "dado": "Visualización de resultados de sesión en gráfico circular.",
+    "cuando": "Dado que el administrador evalúa la efectividad de las alertas en las sesiones.",
+    "entonces": "Cuando observe la tarjeta 'Distribución de Resultados de Sesión'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU044",
+    "caracteristica": "Visualizar conversión y abandono segmentado por tipo de cliente.",
+    "razon": "Para comparar la respuesta de clientes recurrentes, nuevos y anónimos.",
+    "esc_num": 1,
+    "dado": "Gráfico de barras de conversión por segmento.",
+    "cuando": "Dado que el administrador analiza el comportamiento por tipo de cliente.",
+    "entonces": "Cuando revise la sección 'Conversión por Segmento de Cliente'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU045",
+    "caracteristica": "Filtrar analítica por selector de rango de fechas.",
+    "razon": "Para evaluar los resultados de la campaña en períodos específicos (semanas, meses).",
+    "esc_num": 1,
+    "dado": "Filtrado temporal mediante botón selector de fecha.",
+    "cuando": "Dado que el administrador se encuentra en el Dashboard.",
+    "entonces": "Cuando haga clic en el botón de rango de fechas (ej. '08 jul - 14 jul, 2024')."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU046",
+    "caracteristica": "Configurar preferencias de reportes automáticos, moneda y zona horaria.",
+    "razon": "Para recibir resúmenes diarios por correo y operar en mi divisa local (PEN o USD).",
+    "esc_num": 1,
+    "dado": "Guardado de preferencias de dashboard y correo.",
+    "cuando": "Dado que el administrador está en 'Preferencias de Dashboard' en Configuración.",
+    "entonces": "Cuando active 'Recibir Reportes Diarios por Correo', elija Moneda 'PEN' y guarde."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU047",
+    "caracteristica": "Exportar reporte consolidado de métricas en formato PDF.",
+    "razon": "Para presentar los resultados de conversión e ingresos recuperados a la gerencia.",
+    "esc_num": 1,
+    "dado": "Descarga de archivo PDF con KPIs y gráficos.",
+    "cuando": "Dado que el administrador está visualizando el reporte consolidado.",
+    "entonces": "When presione el botón 'Exportar a PDF'."
+  },
+  {
+    "id": "Como Administrador Retail.",
+    "rol": "HU048",
+    "caracteristica": "Configurar experimentación y prueba A/B de ofertas comerciales.",
+    "razon": "Para contrastar el impacto en ventas de los compradores que reciben la oferta vs los que no.",
+    "esc_num": 1,
+    "dado": "División de tráfico 50/50 para test A/B.",
+    "cuando": "Dado que el administrador habilita el modo de experimento A/B en el servidor.",
+    "entonces": "Cuando ingresen nuevas sesiones a la tienda externa."
+  },
+  {
+    "id": "Como Sistema.",
+    "rol": "HU049",
+    "caracteristica": "Desplegar el sistema en contenedores Docker y pipeline CI/CD.",
+    "razon": "Para garantizar un despliegue estandarizado en la nube y pruebas continuas automáticas.",
+    "esc_num": 1,
+    "dado": "Arranque de microservicios con Docker Compose.",
+    "cuando": "Dado que existe el archivo docker-compose.yml con las definiciones de servicios.",
+    "entonces": "Cuando se ejecute el comando 'docker-compose up -d'."
+  }
+]

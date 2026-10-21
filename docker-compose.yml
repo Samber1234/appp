@@ -1,0 +1,90 @@
+version: '3.8'
+
+# ==============================================================================
+# HU0047-1 / HU0047-3 (CP052, CP075): Orquestación de 4 Contenedores Docker
+# 1. frontend (Dashboard SaaS + Tienda Externa)
+# 2. api-backend (FastAPI + Persistencia SQLite/PostgreSQL/DynamoDB/Redis)
+# 3. ml-models (Inferencia XGBoost + K-Means + Filtrado Híbrido)
+# 4. database (PostgreSQL 16 Gratis/Open-Source para Producción ACID)
+# ==============================================================================
+
+services:
+  frontend:
+    build: .
+    image: technova-retail/frontend-web:2.0.0
+    container_name: technova_frontend
+    ports:
+      - "4200:8000"
+    environment:
+      - API_URL=http://api-backend:8000
+      - RETAIL_ID=RET-LIMA-001
+    depends_on:
+      - api-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+
+  api-backend:
+    build: .
+    image: technova-retail/api-backend:2.0.0
+    container_name: technova_api_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend_local/db:/app/backend_local/db
+    environment:
+      - RETAIL_ID=RET-LIMA-001
+      - AWS_REGION=us-east-1
+      - DYNAMODB_TABLE=Clickstream_Events
+      - RDS_DB=technova_rds_postgresql
+      - DATABASE_URL=postgresql://technova_admin:TechNova2026!@database:5432/technova_rds_postgresql
+    depends_on:
+      - database
+      - ml-models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+
+  ml-models:
+    build: .
+    image: technova-retail/ml-inference-engine:2.0.0
+    container_name: technova_ml_models
+    ports:
+      - "8080:8000"
+    environment:
+      - MODEL_ABANDONMENT=XGBoost-Abandonment-v2.1
+      - MODEL_SEGMENTATION=KMeans-CustomerSegmentation-k4
+      - MODEL_RECOMMENDATION=HybridFiltering-SVD-Content
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+
+  database:
+    image: postgres:16-alpine
+    container_name: technova_database_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=technova_admin
+      - POSTGRES_PASSWORD=TechNova2026!
+      - POSTGRES_DB=technova_rds_postgresql
+    volumes:
+      - pgdata_technova:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U technova_admin -d technova_rds_postgresql"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: always
+
+volumes:
+  pgdata_technova:

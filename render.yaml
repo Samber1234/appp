@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: technova-retail-ai-engine
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python backend_local/server.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: RETAIL_ID
+        value: RET-LIMA-001
