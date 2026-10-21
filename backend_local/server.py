@@ -12,6 +12,9 @@ Persistencia real en Base de Datos:
 import os
 import sys
 import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Garantizar que el directorio backend_local esté en sys.path en cualquier entorno Cloud (Render, Railway, Docker)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -450,9 +453,61 @@ def logout_retail(request: Request):
     }
 
 
+def send_gmail_recovery_email(target_email: str, full_reset_url: str, reset_token: str) -> bool:
+    """
+    Envía el correo real de restablecimiento de contraseña mediante Gmail SMTP (smtp.gmail.com:465)
+    si están configuradas las variables de entorno SMTP_EMAIL y SMTP_PASSWORD.
+    Si el correo solicitado es el de prueba académico (admin@technova.motorIA.com.pe),
+    entrega copia real en la bandeja de SMTP_EMAIL para demostración en vivo.
+    """
+    smtp_user = os.environ.get("SMTP_EMAIL", "").strip()
+    smtp_pass = os.environ.get("SMTP_PASSWORD", "").strip().replace(" ", "")
+    if not smtp_user or not smtp_pass:
+        return False
+
+    # Si el correo destino es el dominio ficticio del caso de prueba, enviarlo al Gmail configurado
+    real_recipient = smtp_user if target_email.lower().endswith("motoria.com.pe") else target_email
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Restablecimiento de Contraseña - TechNova Retail Analytics"
+    msg["From"] = f"TechNova Seguridad <{smtp_user}>"
+    msg["To"] = real_recipient
+
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff;">
+      <h2 style="color: #0d6efd; margin-top: 0;">TechNova Retail Analytics</h2>
+      <p style="color: #334155; font-size: 15px;">Hola,</p>
+      <p style="color: #334155; font-size: 15px;">
+        Hemos recibido una solicitud para restablecer la contraseña de la cuenta corporativa <strong>{target_email}</strong>.
+      </p>
+      <p style="text-align: center; margin: 28px 0;">
+        <a href="{full_reset_url}" style="background-color: #0d6efd; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">
+          Restablecer mi Contraseña
+        </a>
+      </p>
+      <p style="color: #64748b; font-size: 13px;">
+        Token temporal (vigencia de 30 minutos y un solo uso): <code>{reset_token}</code>
+      </p>
+      <p style="color: #64748b; font-size: 13px;">
+        Enlace directo: <a href="{full_reset_url}">{full_reset_url}</a>
+      </p>
+    </div>
+    """
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=8) as server:
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, [real_recipient], msg.as_string())
+        return True
+    except Exception as e:
+        log_system_event("WARNING", "SMTP_GMAIL", f"No se pudo enviar SMTP: {e}")
+        return False
+
+
 @app.post("/api/v1/auth/recover-password")
-def recover_password(req: RecoverRequest):
-    """HU0003-1 / CP004 y HU0003-2 / CP005: Recuperación con token temporal o notificación neutra."""
+def recover_password(req: RecoverRequest, request: Request):
+    """HU0003-1 / CP004 y HU0003-2 / CP005: Recuperación con token temporal (SMTP Gmail + Enlace seguro) o notificación neutra."""
     email = (req.email or "").strip()
     if not email:
         raise HTTPException(status_code=400, detail="Ingrese un correo corporativo válido.")
@@ -479,9 +534,14 @@ def recover_password(req: RecoverRequest):
     conn.commit()
     conn.close()
 
+    base_url = str(request.base_url).rstrip("/")
+    full_reset_url = f"{base_url}/restablecer?token={reset_token}"
+    smtp_sent = send_gmail_recovery_email(email, full_reset_url, reset_token)
+
     return {
         "status": "success",
         "email_registered": True,
+        "smtp_sent": smtp_sent,
         "reset_token": reset_token,
         "reset_url": f"/restablecer?token={reset_token}",
         "message": "Se ha enviado un enlace seguro de restablecimiento al correo corporativo ingresado."
