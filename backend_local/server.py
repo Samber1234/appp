@@ -48,6 +48,9 @@ from db.database import (
     DYNAMO_DB_PATH,
     DYNAMO_JSON_MIRROR,
     REDIS_JSON_PATH,
+    mark_local_write_ts,
+    export_compact_db_state,
+    import_compact_db_state,
 )
 
 # Inicializar bases de datos físicas al arrancar el servidor
@@ -66,6 +69,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def serverless_db_sync_middleware(request: Request, call_next):
+    """
+    Sincroniza automáticamente la base de datos entre múltiples instancias Serverless (Vercel Lambda)
+    para que al refrescar varias veces o cambiar de worker nunca se reviertan los datos guardados.
+    """
+    sync_token = request.cookies.get("tn_db_sync") or request.headers.get("X-TN-DB-Sync")
+    if sync_token and request.url.path != "/api/v1/system/reset-demo":
+        import_compact_db_state(sync_token)
+
+    response = await call_next(request)
+
+    if request.url.path == "/api/v1/system/reset-demo" and request.method == "POST":
+        mark_local_write_ts()
+        new_token = export_compact_db_state()
+        if new_token:
+            response.set_cookie("tn_db_sync", new_token, max_age=31536000, path="/", samesite="lax")
+    elif request.method in ("POST", "PUT", "PATCH", "DELETE") and response.status_code < 400:
+        mark_local_write_ts()
+        new_token = export_compact_db_state()
+        if new_token:
+            response.set_cookie("tn_db_sync", new_token, max_age=31536000, path="/", samesite="lax")
+
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+
+    return response
 
 # ==============================================================================
 # ESTADO COMPLEMENTARIO EN MEMORIA + BD PARA PRUEBAS Y SEGURIDAD

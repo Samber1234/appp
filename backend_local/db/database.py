@@ -15,6 +15,8 @@ Además del almacén en caché Redis con conmutación automática (failover) a D
 import os
 import json
 import time
+import zlib
+import base64
 import sqlite3
 import hashlib
 import threading
@@ -641,3 +643,92 @@ def get_system_logs(limit: int = 30) -> List[Dict[str, Any]]:
         ).fetchall()
         conn.close()
     return [dict(r) for r in rows]
+
+
+# ==============================================================================
+# SINCRONIZACIÓN MULTI-INSTANCIA SERVERLESS (VERCEL / CLOUD WORKERS)
+# Garantiza que aunque Vercel levante múltiples instancias Lambda en paralelo
+# al refrescar varias veces o tras entrar en reposo, todas las instancias
+# compartan exactamente los mismos cambios de la base de datos sin reiniciarse.
+# ==============================================================================
+_worker_state_ts: float = 0.0
+
+
+def mark_local_write_ts() -> float:
+    global _worker_state_ts
+    _worker_state_ts = time.time()
+    return _worker_state_ts
+
+
+def export_compact_db_state() -> str:
+    """Serializa y comprime el estado de las tablas para sincronizar instancias Serverless."""
+    global _worker_state_ts
+    if _worker_state_ts == 0.0:
+        _worker_state_ts = time.time()
+    with _db_lock:
+        conn = get_relational_connection()
+        try:
+            all_tables = [
+                r["name"] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'SYSTEM_LOGS';"
+                ).fetchall()
+            ]
+            snapshot: Dict[str, Any] = {"ts": _worker_state_ts, "tables": {}}
+            for t in all_tables:
+                if t == "SESSION_PREDICTION":
+                    rows = [dict(r) for r in conn.execute("SELECT * FROM SESSION_PREDICTION ORDER BY created_at DESC LIMIT 10;").fetchall()]
+                else:
+                    rows = [dict(r) for r in conn.execute(f"SELECT * FROM {t} LIMIT 25;").fetchall()]
+                snapshot["tables"][t] = rows
+            raw_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            compressed = zlib.compress(raw_bytes, level=9)
+            return base64.urlsafe_b64encode(compressed).decode("ascii")
+        except Exception:
+            return ""
+        finally:
+            conn.close()
+
+
+def import_compact_db_state(token_str: str):
+    """Restaura instantáneamente el estado más reciente en cualquier instancia Serverless nueva."""
+    global _worker_state_ts
+    if not token_str:
+        return
+    try:
+        compressed = base64.urlsafe_b64decode(token_str.encode("ascii"))
+        raw_bytes = zlib.decompress(compressed)
+        snapshot = json.loads(raw_bytes.decode("utf-8"))
+        incoming_ts = float(snapshot.get("ts") or 0.0)
+        if incoming_ts <= _worker_state_ts:
+            return
+
+        tables_data = snapshot.get("tables", {})
+        with _db_lock:
+            conn = get_relational_connection()
+            try:
+                existing_tables = {
+                    r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+                }
+                for tname, rows in tables_data.items():
+                    if not isinstance(rows, list):
+                        continue
+                    if tname not in existing_tables and rows and isinstance(rows[0], dict):
+                        cols_def = ", ".join([f"{k} TEXT" for k in rows[0].keys()])
+                        conn.execute(f"CREATE TABLE IF NOT EXISTS {tname} ({cols_def});")
+                        existing_tables.add(tname)
+                    if tname in existing_tables:
+                        conn.execute(f"DELETE FROM {tname};")
+                        for row in rows:
+                            if not isinstance(row, dict) or not row:
+                                continue
+                            cols = list(row.keys())
+                            placeholders = ", ".join(["?"] * len(cols))
+                            col_names = ", ".join(cols)
+                            vals = [row[c] for c in cols]
+                            conn.execute(f"INSERT OR REPLACE INTO {tname} ({col_names}) VALUES ({placeholders});", vals)
+                conn.commit()
+                _worker_state_ts = incoming_ts
+            finally:
+                conn.close()
+    except Exception:
+        pass
