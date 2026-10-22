@@ -403,7 +403,10 @@
     `;
     document.body.appendChild(hud);
 
-    let collapsed = false;
+    let collapsed = window.innerWidth <= 768;
+    if (collapsed) {
+      document.getElementById('technova-hud-body').style.display = 'none';
+    }
     document.getElementById('technova-hud-toggle').addEventListener('click', () => {
       collapsed = !collapsed;
       document.getElementById('technova-hud-body').style.display = collapsed ? 'none' : 'block';
@@ -446,6 +449,7 @@
         position: fixed;
         bottom: 15px; left: 15px;
         width: 340px;
+        max-width: calc(100vw - 24px);
         background: #ffffff;
         border: 1px solid #0d6efd;
         border-radius: 10px;
@@ -453,6 +457,18 @@
         font-family: monospace, sans-serif;
         z-index: 999990;
         overflow: hidden;
+      }
+      @media (max-width: 768px) {
+        #technova-popup-card {
+          width: 94%;
+          padding: 22px 16px;
+        }
+        #technova-hud {
+          left: 12px;
+          right: 12px;
+          bottom: 10px;
+          width: auto;
+        }
       }
       #technova-hud-header {
         background: #0d6efd; color: white;

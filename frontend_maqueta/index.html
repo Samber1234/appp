@@ -167,7 +167,7 @@
             <p class="subtitle">KPIs consolidados de optimización de ingresos y retención con IA</p>
           </div>
           
-          <div style="display: flex; gap: 12px; align-items: center;">
+          <div class="dashboard-actions-bar" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
             <!-- Selector de Rango de Fechas (HU045 / CP051) -->
             <div class="date-dropdown-container">
               <button class="date-picker-btn" onclick="app.toggleDateDropdown()">
@@ -518,7 +518,7 @@
         </div>
 
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
               <strong>Estado del Cronjob de Re-entrenamiento (HU024 / CP029):</strong>
               <span style="color: #198754; font-weight: bold; margin-left: 8px;">● Programado semanalmente en AWS EventBridge (Domingos 02:00 AM)</span>
@@ -597,7 +597,7 @@
             <div class="icon-title">
               <h3>SIGNIFICANCIA ESTADÍSTICA DEL TEST A/B</h3>
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap;">
               <span id="ab-significance-badge" class="badge" style="background: #d1e7dd; color: #0f5132;">p-value = 0.002 (p &lt; 0.05)</span>
               <button class="btn-primary small-btn" onclick="app.cargarAbTest(true)" style="font-size:0.75rem; padding:4px 8px; background:#6c757d;">Simular Muestra Baja (15 sesiones)</button>
               <button class="btn-primary small-btn" onclick="app.cargarAbTest(false)" style="font-size:0.75rem; padding:4px 8px;">Muestra Completa (1,420 sesiones)</button>
@@ -850,7 +850,7 @@
               <span class="badge">Amazon S3 / DynamoDB</span>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div class="catalog-sync-grid">
               <div>
                 <h4 style="margin-bottom: 10px; color: #2c3e50;">1. Sincronización de Catálogo vía API (HU009 / CP013)</h4>
                 <p style="font-size: 0.85rem; color: #6c757d; margin-bottom: 15px;">Transmite el catálogo de SKUs y precios de tu tienda al motor XGBoost mediante API RESTful.</p>
