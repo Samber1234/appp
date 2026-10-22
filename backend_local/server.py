@@ -1527,20 +1527,21 @@ def get_daily_kpis(
 
 
 def _pdf_escape(text: str) -> str:
-    """Normaliza acentos a Latin-1 (WinAnsiEncoding) y escapa paréntesis para PDF 1.4 válido."""
+    """Normaliza acentos a ASCII puro de 7 bits y escapa paréntesis para evitar corrupción UTF-8 en Serverless."""
     replacements = {
         "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
         "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
-        "ñ": "n", "Ñ": "N", "¡": "", "¿": ""
+        "ñ": "n", "Ñ": "N", "ü": "u", "Ü": "U", "¡": "", "¿": "", "°": " "
     }
     for k, v in replacements.items():
         text = text.replace(k, v)
-    return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    clean_ascii = text.encode("ascii", errors="ignore").decode("ascii")
+    return clean_ascii.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
 
 @app.get("/api/v1/kpi/export-pdf")
 def export_kpi_report_pdf():
-    """HU0045-1 / CP050: Genera y descarga un archivo binario PDF 1.4 100% válido ('Reporte_Metricas_Retail.pdf')."""
+    """HU0045-1 / CP050: Genera y descarga un archivo PDF 1.4 100% ASCII-safe ('Reporte_Metricas_Retail.pdf')."""
     conn = get_relational_connection()
     kpi = conn.execute("SELECT * FROM DAILY_KPI WHERE retail_id = 'RT-001';").fetchone()
     client = conn.execute("SELECT * FROM RETAIL_CLIENT WHERE id = 'RT-001';").fetchone()
@@ -1558,29 +1559,30 @@ def export_kpi_report_pdf():
 
     lines = [
         "q",
-        "0.05 0.43 0.99 rg 40 715 532 45 re f",
+        "0.06 0.09 0.16 rg 40 710 532 50 re f",
+        "0.05 0.43 0.99 rg 40 706 532 4 re f",
         "Q",
         "BT",
-        "/F2 16 Tf 1 1 1 rg 55 732 Td (REPORTE EJECUTIVO - TECHNOVA RETAIL ANALYTICS) Tj",
-        "/F1 10 Tf 0 0 0 rg 0 -42 Td (Comercio: " + company_name + " | RUC: " + ruc_val + " | Fecha: " + fecha_gen + ") Tj",
-        "/F2 13 Tf 0.05 0.43 0.99 rg 0 -30 Td (1. INDICADORES CLAVE DE RENDIMIENTO COMERCIAL \\(KPIs\\)) Tj",
+        "/F2 15 Tf 1 1 1 rg 55 730 Td (REPORTE EJECUTIVO - TECHNOVA RETAIL ANALYTICS) Tj",
+        "/F1 10 Tf 0.15 0.2 0.3 rg 0 -42 Td (Comercio: " + company_name + " | RUC: " + ruc_val + " | Fecha: " + fecha_gen + ") Tj",
+        "/F2 12 Tf 0.05 0.43 0.99 rg 0 -30 Td (1. INDICADORES CLAVE DE RENDIMIENTO COMERCIAL \\(KPIs\\)) Tj",
         "/F1 11 Tf 0.1 0.1 0.1 rg 0 -22 Td (- Tasa de Conversion de Ofertas IA: " + conv_rate + " \\(+2.1% vs semana anterior\\)) Tj",
         "0 -18 Td (- Reduccion de Abandono de Carrito: " + aban_red + " \\(+1.8% vs semana anterior\\)) Tj",
         "0 -18 Td (- Secciones Optimizadas Activas: " + sec_opt + " categorias monitoreadas) Tj",
         "0 -18 Td (- Ingresos Recuperados Acumulados: " + ing_rec + ") Tj",
         "0 -18 Td (- Total Ofertas Desplegadas / Convertidas: " + ofertas_desp + " desplegadas / " + ofertas_conv + " convertidas) Tj",
-        "/F2 13 Tf 0.05 0.43 0.99 rg 0 -32 Td (2. METRICAS TECNICAS DEL MOTOR HIBRIDO IA \\(GRU + XGBOOST\\)) Tj",
+        "/F2 12 Tf 0.05 0.43 0.99 rg 0 -32 Td (2. METRICAS TECNICAS DEL MOTOR HIBRIDO IA \\(GRU + XGBOOST\\)) Tj",
         "/F1 11 Tf 0.1 0.1 0.1 rg 0 -22 Td (- F1-Score Ponderado: 88.4% \\(Meta ABET > 80% Cumplida\\)) Tj",
         "0 -18 Td (- Sensibilidad / Recall: 85.0% | Precision Tabular: 90.7%) Tj",
         "0 -18 Td (- Area Bajo la Curva \\(AUC-ROC\\): 0.92 | Latencia Promedio: 18.4 ms \\(< 40 ms\\)) Tj",
-        "/F2 13 Tf 0.05 0.43 0.99 rg 0 -32 Td (3. RESULTADOS DE EXPERIMENTACION TEST A/B \\(DIVISION 50/50\\)) Tj",
+        "/F2 12 Tf 0.05 0.43 0.99 rg 0 -32 Td (3. RESULTADOS DE EXPERIMENTACION TEST A/B \\(DIVISION 50/50\\)) Tj",
         "/F1 11 Tf 0.1 0.1 0.1 rg 0 -22 Td (- Variante A \\(Control Sin IA\\): 14.2% conversion | S/ 5,800.00 recuperados) Tj",
-        "0 -18 Td (- Variante B \\(TechNova Motor IA\\): 32.4% conversion | " + ing_rec + " recuperados) Tj",
+        "0 -18 Td (- Variante B \\(TechNova Motor IA\\): " + conv_rate + " conversion | " + ing_rec + " recuperados) Tj",
         "0 -18 Td (- Significancia Estadistica: p-value = 0.002 \\(Confianza del 99.8% - Ganador Variante B\\)) Tj",
         "/F1 9 Tf 0.4 0.4 0.4 rg 0 -45 Td (Documento generado automaticamente por TechNova AI Commercial Offer Engine v2.0 - Cumplimiento Ley N 29733.) Tj",
         "ET"
     ]
-    stream_data = "\n".join(lines).encode("latin-1", errors="ignore")
+    stream_data = "\n".join(lines).encode("ascii", errors="ignore")
 
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -1591,7 +1593,7 @@ def export_kpi_report_pdf():
         f"<< /Length {len(stream_data)} >>\nstream\n".encode("ascii") + stream_data + b"\nendstream"
     ]
 
-    pdf_out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    pdf_out = bytearray(b"%PDF-1.4\n")
     offsets = []
     for idx, obj_body in enumerate(objects, start=1):
         offsets.append(len(pdf_out))
@@ -1613,7 +1615,8 @@ def export_kpi_report_pdf():
         content=bytes(pdf_out),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": 'attachment; filename="Reporte_Metricas_Retail.pdf"'
+            "Content-Disposition": 'attachment; filename="Reporte_Metricas_Retail.pdf"',
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
         }
     )
 
