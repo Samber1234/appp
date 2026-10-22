@@ -144,6 +144,8 @@
       retail_id: RETAIL_ID,
       product_sku: (currentProductData && currentProductData.sku) || 'LENOVO-G5',
       product_name: (currentProductData && currentProductData.name) || 'Laptop Lenovo Gamer',
+      original_price: (currentProductData && currentProductData.price) || 4199.00,
+      category: (currentProductData && currentProductData.category) || 'Laptops & Ultrabooks',
       dwell_time_ms: dwellMs,
       interaction_count: Math.max(interactionCount, 3),
       event_type: triggerReason
@@ -292,6 +294,7 @@
 
       window.dispatchEvent(new CustomEvent('technova:conversion', {
         detail: {
+          sku: data.recommended_sku || (currentProductData && currentProductData.sku) || 'LENOVO-G5',
           product_name: data.product_name || 'Laptop Lenovo Gamer i5',
           original_price: data.original_price || 4199.00,
           discounted_price: data.discounted_price || 2939.30,
