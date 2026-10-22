@@ -42,7 +42,18 @@ const app = (function () {
   // =========================================================================
   // ENRUTADOR DE VISTAS (SPA)
   // =========================================================================
+  function toggleMobileMenu() {
+    const nav = document.getElementById('main-navbar') || document.querySelector('.navbar');
+    if (nav) {
+      nav.classList.toggle('menu-open');
+    }
+  }
+
   function navegar(ruta) {
+    const nav = document.getElementById('main-navbar') || document.querySelector('.navbar');
+    if (nav) {
+      nav.classList.remove('menu-open');
+    }
     currentRoute = ruta;
     window.history.pushState({}, '', ruta);
     renderRoute(ruta);
@@ -899,6 +910,7 @@ const app = (function () {
   });
 
   return {
+    toggleMobileMenu: toggleMobileMenu,
     navegar: navegar,
     ingresar: ingresar,
     salir: salir,
