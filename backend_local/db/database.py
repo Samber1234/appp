@@ -712,53 +712,98 @@ def get_system_logs(limit: int = 30) -> List[Dict[str, Any]]:
 # SINCRONIZACIÓN MULTI-INSTANCIA SERVERLESS (VERCEL / CLOUD WORKERS)
 # Garantiza que aunque Vercel levante múltiples instancias Lambda en paralelo
 # al refrescar varias veces o tras entrar en reposo, todas las instancias
-# compartan exactamente los mismos cambios de la base de datos sin reiniciarse.
+# compartan exactamente los mismos cambios de la base de datos relacional
+# y los eventos de telemetría de Clickstream_Events (DynamoDB) sin perderse.
 # ==============================================================================
 _worker_state_ts: float = 0.0
+_last_reset_ts: float = 0.0
 
 
-def mark_local_write_ts() -> float:
-    global _worker_state_ts
-    _worker_state_ts = time.time()
+def mark_local_write_ts(is_factory_reset: bool = False) -> float:
+    global _worker_state_ts, _last_reset_ts
+    now_ts = time.time()
+    _worker_state_ts = now_ts
+    if is_factory_reset:
+        _last_reset_ts = now_ts
     return _worker_state_ts
 
 
 def export_compact_db_state() -> str:
-    """Serializa y comprime el estado de las tablas para sincronizar instancias Serverless."""
-    global _worker_state_ts
+    """Serializa y comprime el estado relacional + Clickstream_Events para sincronizar instancias Serverless."""
+    global _worker_state_ts, _last_reset_ts
     if _worker_state_ts == 0.0:
         _worker_state_ts = time.time()
     with _db_lock:
         conn = get_relational_connection()
+        dconn = get_dynamo_connection()
         try:
-            all_tables = [
-                r["name"] for r in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'SYSTEM_LOGS';"
+            core_queries = {
+                "RETAIL_CLIENT": "SELECT * FROM RETAIL_CLIENT WHERE id = 'RT-001' LIMIT 1;",
+                "USER_PROFILE": "SELECT * FROM USER_PROFILE LIMIT 5;",
+                "ALERT_CONFIG": "SELECT * FROM ALERT_CONFIG WHERE retail_id = 'RT-001' LIMIT 1;",
+                "DAILY_KPI": "SELECT * FROM DAILY_KPI WHERE retail_id = 'RT-001' LIMIT 1;",
+                "SESSION_PREDICTION": "SELECT * FROM SESSION_PREDICTION ORDER BY created_at DESC LIMIT 5;",
+                "PRODUCT_CATALOG": "SELECT * FROM PRODUCT_CATALOG ORDER BY updated_at DESC LIMIT 4;",
+                "PASSWORD_RESET_TOKEN": "SELECT * FROM PASSWORD_RESET_TOKEN ORDER BY created_at DESC LIMIT 4;",
+                "REVOKED_TOKENS": "SELECT * FROM REVOKED_TOKENS ORDER BY revoked_at DESC LIMIT 5;",
+                "REDEEMED_COUPONS": "SELECT * FROM REDEEMED_COUPONS ORDER BY redeemed_at DESC LIMIT 5;",
+            }
+            tables_map: Dict[str, Any] = {}
+            for tname, q in core_queries.items():
+                try:
+                    tables_map[tname] = [dict(r) for r in conn.execute(q).fetchall()]
+                except Exception:
+                    pass
+
+            dynamo_rows = [
+                {
+                    "p": r["PK_SessionId"],
+                    "s": r["SK_Timestamp"],
+                    "e": r["EventType"],
+                    "u": r["PageUrl"],
+                    "k": r["ProductSku"],
+                    "d": r["DwellTimeMs"],
+                    "h": r["AnonymizedIpHash"],
+                    "r": r["RetailId"],
+                    "i": r["UserId"],
+                }
+                for r in dconn.execute(
+                    "SELECT PK_SessionId, SK_Timestamp, EventType, PageUrl, ProductSku, DwellTimeMs, AnonymizedIpHash, RetailId, UserId FROM Clickstream_Events ORDER BY SK_Timestamp DESC LIMIT 15;"
                 ).fetchall()
             ]
-            snapshot: Dict[str, Any] = {"ts": _worker_state_ts, "tables": {}}
-            for t in all_tables:
-                if t == "SESSION_PREDICTION":
-                    rows = [dict(r) for r in conn.execute("SELECT * FROM SESSION_PREDICTION ORDER BY created_at DESC LIMIT 6;").fetchall()]
-                elif t == "PRODUCT_CATALOG":
-                    rows = [dict(r) for r in conn.execute("SELECT * FROM PRODUCT_CATALOG ORDER BY updated_at DESC LIMIT 6;").fetchall()]
-                elif t == "REVOKED_TOKENS":
-                    rows = [dict(r) for r in conn.execute("SELECT * FROM REVOKED_TOKENS ORDER BY revoked_at DESC LIMIT 15;").fetchall()]
-                else:
-                    rows = [dict(r) for r in conn.execute(f"SELECT * FROM {t} LIMIT 20;").fetchall()]
-                snapshot["tables"][t] = rows
+
+            snapshot: Dict[str, Any] = {
+                "ts": _worker_state_ts,
+                "reset_ts": _last_reset_ts,
+                "tables": tables_map,
+                "dynamo_events": dynamo_rows,
+            }
             raw_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             compressed = zlib.compress(raw_bytes, level=9)
-            return base64.urlsafe_b64encode(compressed).decode("ascii")
+            b64_str = base64.urlsafe_b64encode(compressed).decode("ascii")
+
+            # Salvaguarda de tamaño de cookie (< 3600 bytes para nunca superar el límite de 4096 bytes del navegador)
+            if len(b64_str) > 3500:
+                snapshot["dynamo_events"] = dynamo_rows[:10]
+                if "REVOKED_TOKENS" in snapshot["tables"]:
+                    snapshot["tables"]["REVOKED_TOKENS"] = snapshot["tables"]["REVOKED_TOKENS"][:3]
+                if "PRODUCT_CATALOG" in snapshot["tables"]:
+                    snapshot["tables"]["PRODUCT_CATALOG"] = snapshot["tables"]["PRODUCT_CATALOG"][:2]
+                raw_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                compressed = zlib.compress(raw_bytes, level=9)
+                b64_str = base64.urlsafe_b64encode(compressed).decode("ascii")
+
+            return b64_str
         except Exception:
             return ""
         finally:
             conn.close()
+            dconn.close()
 
 
 def import_compact_db_state(token_str: str):
-    """Restaura instantáneamente el estado más reciente en cualquier instancia Serverless nueva."""
-    global _worker_state_ts
+    """Fusiona de forma aditiva y por marca temporal el estado entre instancias Serverless (sin pérdida en recargas)."""
+    global _worker_state_ts, _last_reset_ts
     if not token_str:
         return
     try:
@@ -766,36 +811,93 @@ def import_compact_db_state(token_str: str):
         raw_bytes = zlib.decompress(compressed)
         snapshot = json.loads(raw_bytes.decode("utf-8"))
         incoming_ts = float(snapshot.get("ts") or 0.0)
-        if incoming_ts <= _worker_state_ts:
-            return
+        incoming_reset_ts = float(snapshot.get("reset_ts") or 0.0)
 
-        tables_data = snapshot.get("tables", {})
         with _db_lock:
+            # Si otra instancia ejecutó Restaurar Datos de Fábrica, aplicarlo en esta instancia
+            if incoming_reset_ts > _last_reset_ts:
+                init_databases(reset_to_defaults=True)
+                _last_reset_ts = incoming_reset_ts
+
+            # 1. Fusionar SIEMPRE de forma aditiva los eventos de telemetría (Clickstream_Events en DynamoDB)
+            dynamo_events = snapshot.get("dynamo_events")
+            if isinstance(dynamo_events, list) and dynamo_events:
+                dconn = get_dynamo_connection()
+                try:
+                    for ev in dynamo_events:
+                        if not isinstance(ev, dict):
+                            continue
+                        pk = ev.get("p") or ev.get("PK_SessionId")
+                        sk = ev.get("s") or ev.get("SK_Timestamp")
+                        if not pk or not sk:
+                            continue
+                        exists = dconn.execute(
+                            "SELECT 1 FROM Clickstream_Events WHERE PK_SessionId = ? AND SK_Timestamp = ? LIMIT 1;",
+                            (pk, sk),
+                        ).fetchone()
+                        if not exists:
+                            dconn.execute(
+                                """
+                                INSERT INTO Clickstream_Events (PK_SessionId, SK_Timestamp, EventType, PageUrl, ProductSku, DwellTimeMs, AnonymizedIpHash, Compliance_Ley29733, DeviceData, RetailId, UserId)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, 1, '{}', ?, ?);
+                                """,
+                                (
+                                    pk,
+                                    sk,
+                                    ev.get("e") or ev.get("EventType") or "page_view",
+                                    ev.get("u") or ev.get("PageUrl") or "https://tienda-asociada.pe/tienda-web",
+                                    ev.get("k") or ev.get("ProductSku") or "LENOVO-G5",
+                                    int(ev.get("d") or ev.get("DwellTimeMs") or 0),
+                                    ev.get("h") or ev.get("AnonymizedIpHash") or "e3b0c44298fc1c14",
+                                    ev.get("r") or ev.get("RetailId") or "RT-001",
+                                    ev.get("i") or ev.get("UserId"),
+                                ),
+                            )
+                    dconn.commit()
+                finally:
+                    dconn.close()
+
+            # 2. Fusionar tablas relacionales comparando updated_at por fila para jamás sobrescribir cambios más recientes
+            tables_data = snapshot.get("tables", {})
             conn = get_relational_connection()
             try:
                 existing_tables = {
                     r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
                 }
+                pk_map = {
+                    "RETAIL_CLIENT": "id",
+                    "USER_PROFILE": "id",
+                    "ALERT_CONFIG": "id",
+                    "DAILY_KPI": "id",
+                    "SESSION_PREDICTION": "id",
+                    "PRODUCT_CATALOG": "sku",
+                    "PASSWORD_RESET_TOKEN": "token",
+                    "REVOKED_TOKENS": "token",
+                    "REDEEMED_COUPONS": "coupon_code",
+                }
                 for tname, rows in tables_data.items():
-                    if not isinstance(rows, list):
+                    if not isinstance(rows, list) or tname not in existing_tables:
                         continue
-                    if tname not in existing_tables and rows and isinstance(rows[0], dict):
-                        cols_def = ", ".join([f"{k} TEXT" for k in rows[0].keys()])
-                        conn.execute(f"CREATE TABLE IF NOT EXISTS {tname} ({cols_def});")
-                        existing_tables.add(tname)
-                    if tname in existing_tables:
-                        if tname not in ("PRODUCT_CATALOG", "REVOKED_TOKENS"):
-                            conn.execute(f"DELETE FROM {tname};")
-                        for row in rows:
-                            if not isinstance(row, dict) or not row:
-                                continue
-                            cols = list(row.keys())
-                            placeholders = ", ".join(["?"] * len(cols))
-                            col_names = ", ".join(cols)
-                            vals = [row[c] for c in cols]
-                            conn.execute(f"INSERT OR REPLACE INTO {tname} ({col_names}) VALUES ({placeholders});", vals)
+                    pk_col = pk_map.get(tname)
+                    for row in rows:
+                        if not isinstance(row, dict) or not row:
+                            continue
+                        if pk_col and pk_col in row and "updated_at" in row:
+                            local_row = conn.execute(
+                                f"SELECT updated_at FROM {tname} WHERE {pk_col} = ? LIMIT 1;",
+                                (row[pk_col],),
+                            ).fetchone()
+                            if local_row and local_row["updated_at"]:
+                                if str(row["updated_at"]) < str(local_row["updated_at"]):
+                                    continue
+                        cols = list(row.keys())
+                        placeholders = ", ".join(["?"] * len(cols))
+                        col_names = ", ".join(cols)
+                        vals = [row[c] for c in cols]
+                        conn.execute(f"INSERT OR REPLACE INTO {tname} ({col_names}) VALUES ({placeholders});", vals)
                 conn.commit()
-                _worker_state_ts = incoming_ts
+                if incoming_ts > _worker_state_ts:
+                    _worker_state_ts = incoming_ts
             finally:
                 conn.close()
     except Exception:

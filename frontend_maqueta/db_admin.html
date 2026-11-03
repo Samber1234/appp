@@ -714,6 +714,7 @@ async function resetFactoryData() {
     try {
         localStorage.removeItem('tn_profile_cache');
         localStorage.removeItem('tn_alert_cache');
+        localStorage.removeItem('tn_telemetry_sync_buffer');
         const res = await dbAuthFetch('/api/v1/system/reset-demo', {method: 'POST'});
         if (res.ok) {
             showBanner('Bases de datos restauradas a los valores iniciales de fábrica.');

@@ -102,12 +102,15 @@ async def serverless_db_sync_middleware(request: Request, call_next):
     response = await call_next(request)
 
     if req_path == "/api/v1/system/reset-demo" and request.method == "POST":
-        mark_local_write_ts()
+        mark_local_write_ts(is_factory_reset=True)
         new_token = export_compact_db_state()
         if new_token:
             response.set_cookie("tn_db_sync", new_token, max_age=31536000, path="/", samesite="lax")
-    elif request.method in ("POST", "PUT", "PATCH", "DELETE") and response.status_code < 400:
-        mark_local_write_ts()
+    elif (request.method in ("POST", "PUT", "PATCH", "DELETE") and response.status_code < 400) or (
+        req_path in ("/api/v1/telemetry/recent", "/api/v1/kpi/daily") and response.status_code == 200
+    ):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            mark_local_write_ts()
         new_token = export_compact_db_state()
         if new_token:
             response.set_cookie("tn_db_sync", new_token, max_age=31536000, path="/", samesite="lax")
@@ -1328,6 +1331,7 @@ async def record_telemetry(request: Request):
         "PK_SessionId": stored["PK_SessionId"],
         "SK_Timestamp": stored["SK_Timestamp"],
         "EventType": record["EventType"],
+        "ProductSku": record["ProductSku"],
         "DwellTimeMs": record["DwellTimeMs"],
         "AnonymizedIpHash": anonymized_ip_hash,
         "stored_in": "Amazon DynamoDB (Clickstream_Events)",

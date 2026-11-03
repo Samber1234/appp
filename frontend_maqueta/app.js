@@ -1328,30 +1328,76 @@ const app = (function () {
     }
   }
 
+  function mergeTelemetryBuffers(serverEvents) {
+    let localArr = [];
+    try {
+      const raw = localStorage.getItem('tn_telemetry_sync_buffer');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) localArr = parsed;
+      }
+    } catch (e) {}
+
+    const combined = [...localArr, ...(Array.isArray(serverEvents) ? serverEvents : [])];
+    const seen = new Set();
+    const deduped = [];
+    for (const item of combined) {
+      if (!item || !item.PK_SessionId || !item.SK_Timestamp) continue;
+      const key = `${item.PK_SessionId}|${item.SK_Timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(item);
+      }
+    }
+
+    deduped.sort((a, b) => String(b.SK_Timestamp || '').localeCompare(String(a.SK_Timestamp || '')));
+    const top15 = deduped.slice(0, 15);
+    try {
+      localStorage.setItem('tn_telemetry_sync_buffer', JSON.stringify(top15));
+    } catch (e) {}
+    return top15;
+  }
+
+  function renderTelemetryRows(tbody, events) {
+    if (!tbody) return;
+    if (!Array.isArray(events) || events.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">Esperando eventos de la tienda externa...</td></tr>';
+      return;
+    }
+    tbody.innerHTML = events.map(e => `
+      <tr>
+        <td><span class="badge-tag">${e.EventType}</span></td>
+        <td><code>${(e.PK_SessionId || '').substring(0, 14)}...</code></td>
+        <td><strong>${e.ProductSku || 'Catálogo General'}</strong></td>
+        <td><code>${(e.AnonymizedIpHash || 'SHA-256').substring(0, 16)}</code></td>
+        <td><span style="color:#198754; font-weight:bold;">Ley 29733 (Cumplido)</span></td>
+        <td><small style="color:#6c757d;">${new Date(e.SK_Timestamp).toLocaleTimeString()}</small></td>
+      </tr>
+    `).join('');
+  }
+
   async function cargarTelemetria() {
     const tbody = document.getElementById('telemetry-table-body');
     if (!tbody) return;
+
+    // Renderizado instantáneo desde el buffer sincronizado entre pestañas para evitar parpadeos al recargar
+    try {
+      const cachedRaw = localStorage.getItem('tn_telemetry_sync_buffer');
+      if (cachedRaw) {
+        const cachedEvents = JSON.parse(cachedRaw);
+        if (Array.isArray(cachedEvents) && cachedEvents.length > 0) {
+          renderTelemetryRows(tbody, cachedEvents);
+        }
+      }
+    } catch (e) {}
 
     try {
       const res = await authFetch(`${API_URL}/api/v1/telemetry/recent`);
       if (res.status === 401) return;
       if (res.ok) {
-        const events = await res.json();
-        if (!Array.isArray(events) || events.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">Esperando eventos de la tienda externa...</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = events.map(e => `
-          <tr>
-            <td><span class="badge-tag">${e.EventType}</span></td>
-            <td><code>${(e.PK_SessionId || '').substring(0, 14)}...</code></td>
-            <td><strong>${e.ProductSku || 'Catálogo General'}</strong></td>
-            <td><code>${(e.AnonymizedIpHash || 'SHA-256').substring(0, 16)}</code></td>
-            <td><span style="color:#198754; font-weight:bold;">Ley 29733 (Cumplido)</span></td>
-            <td><small style="color:#6c757d;">${new Date(e.SK_Timestamp).toLocaleTimeString()}</small></td>
-          </tr>
-        `).join('');
+        const serverEvents = await res.json();
+        const mergedEvents = mergeTelemetryBuffers(serverEvents);
+        renderTelemetryRows(tbody, mergedEvents);
       } else {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc3545;">No se pudo obtener la telemetría reciente del servidor.</td></tr>';
       }
@@ -1545,6 +1591,22 @@ const app = (function () {
       const menu = document.getElementById('date-dropdown-menu');
       if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
         menu.style.display = 'none';
+      }
+    });
+
+    if (broadcastChannel) {
+      broadcastChannel.addEventListener('message', (ev) => {
+        if (ev.data && ev.data.type === 'TELEMETRY_EVENT_ADDED') {
+          if (window.location.pathname === '/app/inicio') {
+            cargarTelemetria();
+          }
+        }
+      });
+    }
+
+    window.addEventListener('storage', (ev) => {
+      if (ev.key === 'tn_telemetry_sync_buffer' && window.location.pathname === '/app/inicio') {
+        cargarTelemetria();
       }
     });
   }

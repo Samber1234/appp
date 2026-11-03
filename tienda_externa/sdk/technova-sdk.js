@@ -81,6 +81,33 @@
 
   window.addEventListener('online', flushOfflineQueue);
 
+  let sdkBroadcastChannel = null;
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      sdkBroadcastChannel = new BroadcastChannel('technova_alert_sync');
+    }
+  } catch (e) {
+    sdkBroadcastChannel = null;
+  }
+
+  function persistLiveTelemetryCrossTab(evtObj) {
+    try {
+      const raw = localStorage.getItem('tn_telemetry_sync_buffer');
+      let list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) list = [];
+      const key = `${evtObj.PK_SessionId}|${evtObj.SK_Timestamp}`;
+      list = list.filter(x => `${x.PK_SessionId}|${x.SK_Timestamp}` !== key);
+      list.unshift(evtObj);
+      if (list.length > 15) {
+        list = list.slice(0, 15);
+      }
+      localStorage.setItem('tn_telemetry_sync_buffer', JSON.stringify(list));
+      if (sdkBroadcastChannel) {
+        sdkBroadcastChannel.postMessage({ type: 'TELEMETRY_EVENT_ADDED', event: evtObj });
+      }
+    } catch (e) {}
+  }
+
   async function sendTelemetry(eventType, extraData = {}) {
     const payload = {
       session_id: sessionId,
@@ -110,6 +137,15 @@
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const data = await res.json();
+        persistLiveTelemetryCrossTab({
+          PK_SessionId: data.PK_SessionId || payload.session_id,
+          SK_Timestamp: data.SK_Timestamp || new Date().toISOString(),
+          EventType: data.EventType || payload.event_type,
+          ProductSku: data.ProductSku || payload.product_sku || 'LENOVO-G5',
+          AnonymizedIpHash: data.AnonymizedIpHash || '8b29b07c600569e4',
+          Compliance_Ley29733: true
+        });
         logAI(`Evento '${eventType}' persistido en DynamoDB (<40ms)`);
       }
     } catch (e) {
