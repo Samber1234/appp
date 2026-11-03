@@ -663,16 +663,16 @@ const app = (function () {
     try {
       const res = await fetch(`${API_URL}/api/v1/health`, { cache: 'no-store' });
       if (res.ok) {
-        if (syncEl) syncEl.textContent = 'En tiempo real (' + new Date().toLocaleTimeString() + ')';
+        if (syncEl) syncEl.textContent = 'En tiempo real (' + formatearHoraPeru() + ')';
         // HU0015-1 / CP019
         showToast('Conexión sincronizada con éxito');
       } else {
-        if (syncEl) syncEl.textContent = 'Error HTTP ' + res.status + ' (' + new Date().toLocaleTimeString() + ')';
+        if (syncEl) syncEl.textContent = 'Error HTTP ' + res.status + ' (' + formatearHoraPeru() + ')';
         showToast('Error al verificar conexión con los microservicios (HTTP ' + res.status + ').', true);
       }
     } catch (e) {
       // Mantis 0003195: Notificar fallo real de conexión
-      if (syncEl) syncEl.textContent = 'Sin conexión (' + new Date().toLocaleTimeString() + ')';
+      if (syncEl) syncEl.textContent = 'Sin conexión (' + formatearHoraPeru() + ')';
       showToast('Error de conexión: No se pudo contactar con el servidor de microservicios.', true);
     }
   }
@@ -1128,7 +1128,7 @@ const app = (function () {
         localStorage.setItem('tn_alert_cache', JSON.stringify(data.data || payload));
         showToast('Plantilla comercial actualizada exitosamente.');
         const timeEl = document.getElementById('status-update-time');
-        if (timeEl) timeEl.textContent = 'Justo ahora (' + new Date().toLocaleTimeString() + ')';
+        if (timeEl) timeEl.textContent = 'Justo ahora (' + formatearHoraPeru() + ')';
 
         // Sincronizar en tiempo real con pestañas abiertas de /tienda-web (HU0031-1, HU0031-2)
         const syncMsg = {
@@ -1328,6 +1328,50 @@ const app = (function () {
     }
   }
 
+  function parsearFechaPeru(rawTs) {
+    if (!rawTs) return new Date();
+    let clean = String(rawTs).trim();
+    const lastUnd = clean.lastIndexOf('_');
+    if (lastUnd > 18 && /^\d+$/.test(clean.substring(lastUnd + 1))) {
+      clean = clean.substring(0, lastUnd);
+    }
+    if (clean.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(clean)) {
+      const d = new Date(clean);
+      return isNaN(d.getTime()) ? new Date() : d;
+    }
+    const dPeru = new Date(clean + '-05:00');
+    if (!isNaN(dPeru.getTime())) {
+      if (dPeru.getTime() > Date.now() + 120000) {
+        const dUtc = new Date(clean + 'Z');
+        if (!isNaN(dUtc.getTime())) return dUtc;
+      }
+      return dPeru;
+    }
+    const dFallback = new Date(clean);
+    return isNaN(dFallback.getTime()) ? new Date() : dFallback;
+  }
+
+  function normalizarIsoPeru(rawTs) {
+    const d = parsearFechaPeru(rawTs);
+    const peMs = d.getTime() - (5 * 3600 * 1000);
+    return new Date(peMs).toISOString().slice(0, -1);
+  }
+
+  function formatearHoraPeru(rawTs) {
+    const d = rawTs ? parsearFechaPeru(rawTs) : new Date();
+    try {
+      return d.toLocaleTimeString('es-PE', {
+        timeZone: 'America/Lima',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      return d.toLocaleTimeString();
+    }
+  }
+
   function mergeTelemetryBuffers(serverEvents) {
     let localArr = [];
     try {
@@ -1343,10 +1387,12 @@ const app = (function () {
     const deduped = [];
     for (const item of combined) {
       if (!item || !item.PK_SessionId || !item.SK_Timestamp) continue;
-      const key = `${item.PK_SessionId}|${item.SK_Timestamp}`;
+      const normSk = normalizarIsoPeru(item.SK_Timestamp);
+      const normalizedItem = Object.assign({}, item, { SK_Timestamp: normSk });
+      const key = `${normalizedItem.PK_SessionId}|${normSk.substring(0, 19)}|${normalizedItem.EventType || ''}|${normalizedItem.ProductSku || ''}`;
       if (!seen.has(key)) {
         seen.add(key);
-        deduped.push(item);
+        deduped.push(normalizedItem);
       }
     }
 
@@ -1371,7 +1417,7 @@ const app = (function () {
         <td><strong>${e.ProductSku || 'Catálogo General'}</strong></td>
         <td><code>${(e.AnonymizedIpHash || 'SHA-256').substring(0, 16)}</code></td>
         <td><span style="color:#198754; font-weight:bold;">Ley 29733 (Cumplido)</span></td>
-        <td><small style="color:#6c757d;">${new Date(e.SK_Timestamp).toLocaleTimeString()}</small></td>
+        <td><small style="color:#6c757d;">${formatearHoraPeru(e.SK_Timestamp)}</small></td>
       </tr>
     `).join('');
   }
@@ -1503,7 +1549,7 @@ const app = (function () {
     const f1Val = (document.getElementById('ia-metric-f1') || {}).textContent || '88.4%';
     const recallVal = (document.getElementById('ia-metric-recall') || {}).textContent || '86.2%';
     const precVal = (document.getElementById('ia-metric-precision') || {}).textContent || '90.7%';
-    const fechaGen = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const fechaGen = normalizarIsoPeru(new Date().toISOString()).replace('T', ' ').substring(0, 19);
 
     const streamLines = [
       'q',

@@ -58,6 +58,8 @@ from db.database import (
     mark_local_write_ts,
     export_compact_db_state,
     import_compact_db_state,
+    now_peru,
+    normalize_to_peru_iso,
 )
 
 # Inicializar bases de datos físicas al arrancar el servidor
@@ -155,7 +157,7 @@ ab_test_data = {
 
 def _get_last_sunday_cron_str() -> str:
     """Mantis 0003207: Calcula el domingo más reciente a las 02:00:00 coherente con el cronjob semanal (HU0023 / CP027)."""
-    now = datetime.now()
+    now = now_peru()
     days_since_sunday = (now.weekday() + 1) % 7
     if days_since_sunday == 0 and now.hour < 2:
         days_since_sunday = 7
@@ -574,7 +576,7 @@ def login_retail(req: LoginRequest, response: Response):
         new_attempts = (user["failed_attempts"] or 0) + 1
         conn.execute(
             "UPDATE USER_PROFILE SET failed_attempts = ?, updated_at = ? WHERE email = ?;",
-            (new_attempts, datetime.now().isoformat(), email)
+            (new_attempts, now_peru().isoformat(), email)
         )
         conn.commit()
         conn.close()
@@ -588,7 +590,7 @@ def login_retail(req: LoginRequest, response: Response):
     login_failed_attempts[email] = 0
     conn.execute(
         "UPDATE USER_PROFILE SET failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE email = ?;",
-        (datetime.now().isoformat(), email)
+        (now_peru().isoformat(), email)
     )
     conn.commit()
     conn.close()
@@ -623,7 +625,7 @@ def logout_retail(request: Request, response: Response):
 
     tokens_to_revoke = {t for t in (token, cookie_tok) if t}
     if tokens_to_revoke:
-        now_iso = datetime.now().isoformat()
+        now_iso = now_peru().isoformat()
         conn = get_relational_connection()
         for tok in tokens_to_revoke:
             conn.execute(
@@ -713,10 +715,10 @@ def recover_password(req: RecoverRequest, request: Request):
 
     # HU0003-1 / CP004: Generar token temporal con vigencia de 30 minutos en BD
     reset_token = f"rst_{uuid.uuid4().hex[:16]}"
-    expires_at = (datetime.now() + timedelta(minutes=30)).isoformat()
+    expires_at = (now_peru() + timedelta(minutes=30)).isoformat()
     conn.execute(
         "INSERT INTO PASSWORD_RESET_TOKEN (token, email, expires_at, is_used, created_at) VALUES (?, ?, ?, 0, ?);",
-        (reset_token, email, expires_at, datetime.now().isoformat())
+        (reset_token, email, expires_at, now_peru().isoformat())
     )
     conn.commit()
     conn.close()
@@ -747,7 +749,7 @@ def verify_reset_token(token: str):
             status_code=400,
             detail="El enlace de restablecimiento ha expirado o ya fue utilizado. Solicite un nuevo enlace."
         )
-    if row["is_used"] == 1 or datetime.fromisoformat(row["expires_at"]) < datetime.now():
+    if row["is_used"] == 1 or datetime.fromisoformat(row["expires_at"]) < now_peru():
         raise HTTPException(
             status_code=400,
             detail="El enlace de restablecimiento ha expirado o ya fue utilizado. Solicite un nuevo enlace."
@@ -765,7 +767,7 @@ def reset_password_with_token(req: ResetPasswordWithTokenRequest):
     conn = get_relational_connection()
     row = conn.execute("SELECT * FROM PASSWORD_RESET_TOKEN WHERE token = ?;", (req.token,)).fetchone()
 
-    if not row or row["is_used"] == 1 or datetime.fromisoformat(row["expires_at"]) < datetime.now():
+    if not row or row["is_used"] == 1 or datetime.fromisoformat(row["expires_at"]) < now_peru():
         conn.close()
         raise HTTPException(
             status_code=400,
@@ -784,7 +786,7 @@ def reset_password_with_token(req: ResetPasswordWithTokenRequest):
         )
 
     new_hash = hashlib.sha256(req.new_password.encode("utf-8")).hexdigest()
-    now_iso = datetime.now().isoformat()
+    now_iso = now_peru().isoformat()
     conn.execute(
         "UPDATE USER_PROFILE SET password_hash = ?, updated_at = ? WHERE email = ?;",
         (new_hash, now_iso, row["email"])
@@ -851,7 +853,7 @@ def update_profile(req: ProfileUpdateRequest, request: Request):
     else:
         clean_ruc = "20601234567"
 
-    now_iso = datetime.now().isoformat()
+    now_iso = now_peru().isoformat()
     conn = get_relational_connection()
     conn.execute(
         "UPDATE USER_PROFILE SET company_name = ?, phone = ?, ruc = ?, updated_at = ? WHERE email = 'admin@technova.motorIA.com.pe';",
@@ -907,7 +909,7 @@ def change_password(req: PasswordChangeRequest, request: Request):
     new_hash = hashlib.sha256(req.new_password.encode("utf-8")).hexdigest()
     conn.execute(
         "UPDATE USER_PROFILE SET password_hash = ?, updated_at = ? WHERE email = 'admin@technova.motorIA.com.pe';",
-        (new_hash, datetime.now().isoformat())
+        (new_hash, now_peru().isoformat())
     )
     conn.commit()
     conn.close()
@@ -930,7 +932,7 @@ def health_check():
     return {
         "status": "healthy",
         "message": "Conexión sincronizada con éxito",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_peru().isoformat(),
         "services": {
             "api_microservices": "OK (Verde)",
             "hybrid_engine_gru_xgboost": "OK (Verde)",
@@ -1104,7 +1106,7 @@ async def _process_catalog_sync(request: Request):
             "stock": stock_val,
             "ai_recommended": 1 if prod.get("ai_recommended") else 0,
             "match_score": int(prod.get("match_score", 88)),
-            "updated_at": datetime.now().isoformat()
+            "updated_at": now_peru().isoformat()
         })
 
     conn = get_relational_connection()
@@ -1200,7 +1202,7 @@ async def upload_csv_catalog(request: Request, filename: str = "catalogo_technov
                 p_val,
                 norm_row.get("category", "Laptops Gamer"),
                 s_val,
-                datetime.now().isoformat()
+                now_peru().isoformat()
             ))
         if rows_to_insert:
             conn = get_relational_connection()
@@ -1310,7 +1312,7 @@ async def record_telemetry(request: Request):
 
     record = {
         "PK_SessionId": str(raw_json["session_id"]),
-        "SK_Timestamp": datetime.now().isoformat(),
+        "SK_Timestamp": now_peru().isoformat(),
         "EventType": str(raw_json["event_type"]),
         "PageUrl": str(raw_json.get("page_url", "https://tienda-asociada.pe/tienda-web")),
         "ProductSku": raw_json.get("product_sku") or raw_json.get("product_name") or "LENOVO-G5",
@@ -1393,7 +1395,7 @@ def retrain_models(request: Request, samples_count: int = 5000):
         }
 
     ai_metrics["metrics"] = _compute_ml_metrics_from_matrix(ai_metrics["confusion_matrix"])
-    ai_metrics["last_trained"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (Ejecución Manual - Zero Downtime Reload)"
+    ai_metrics["last_trained"] = now_peru().strftime("%Y-%m-%d %H:%M:%S") + " (Ejecución Manual - Zero Downtime Reload)"
     log_msg = f"Modelos GRU y XGBoost reentrenados con {samples_count} muestras y recargados en caliente (Zero Downtime)."
     log_system_event("INFO", "MLOPS_RETRAIN", log_msg)
     return {
@@ -1512,11 +1514,11 @@ def predict_offer(req: PredictRequest, request: Request):
             abandonment_probability,
             discount_pct,
             latency_ms,
-            datetime.now().isoformat()
+            now_peru().isoformat()
         ))
         conn.execute("""
         UPDATE DAILY_KPI SET ofertas_desplegadas = ofertas_desplegadas + 1, updated_at = ? WHERE retail_id = 'RT-001';
-        """, (datetime.now().isoformat(),))
+        """, (now_peru().isoformat(),))
         conn.commit()
         conn.close()
 
@@ -1636,7 +1638,7 @@ def update_alert_config(payload: AlertConfigPayload, request: Request):
             detail="El descuento excede el límite máximo permitido (50%) para proteger el margen comercial. Descuento fuera de rango permitido (1% - 50%)."
         )
 
-    now_iso = datetime.now().isoformat()
+    now_iso = now_peru().isoformat()
     conn = get_relational_connection()
     cur_cfg = conn.execute("SELECT * FROM ALERT_CONFIG WHERE retail_id = 'RT-001';").fetchone()
 
@@ -1703,10 +1705,10 @@ def register_conversion(event: ConversionEvent):
             )
         conn.execute(
             "INSERT INTO REDEEMED_COUPONS (coupon_code, order_id, redeemed_at) VALUES (?, ?, ?);",
-            (code_clean, f"ORD-{uuid.uuid4().hex[:6].upper()}", datetime.now().isoformat())
+            (code_clean, f"ORD-{uuid.uuid4().hex[:6].upper()}", now_peru().isoformat())
         )
 
-    now_iso = datetime.now().isoformat()
+    now_iso = now_peru().isoformat()
     # Marcar exito_oferta = 1 en SESSION_PREDICTION para la sesión o insertar registro de auditoría
     cur = conn.execute(
         "UPDATE SESSION_PREDICTION SET exito_oferta = 1, amount_recovered = ?, coupon_code = ? WHERE session_id = ?;",
@@ -1820,7 +1822,7 @@ def get_daily_kpis(
                 status_code=400,
                 detail="El rango 'custom' requiere proporcionar 'start_date' y 'end_date' (YYYY-MM-DD)."
             )
-        today = datetime.now().date()
+        today = now_peru().date()
         end_dt = today
         if clean_rango == "7d":
             start_dt = today - timedelta(days=6)
@@ -1944,7 +1946,7 @@ def get_daily_kpis(
         },
         "session_distribution": sess_dist,
         "segment_conversion": seg_conv,
-        "ultima_actualizacion": datetime.now().strftime("%H:%M:%S"),
+        "ultima_actualizacion": now_peru().strftime("%H:%M:%S"),
     }
 
 
@@ -1979,7 +1981,7 @@ def export_kpi_report_pdf(request: Request):
     ing_rec = f"S/ {kpi['ingresos_recuperados']:,.2f}" if kpi else "S/ 18,450.00"
     ofertas_desp = str(kpi["ofertas_desplegadas"]) if kpi else "312"
     ofertas_conv = str(kpi["ofertas_convertidas"]) if kpi else "101"
-    fecha_gen = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    fecha_gen = now_peru().strftime("%Y-%m-%d %H:%M:%S")
 
     lines = [
         "q",
@@ -2225,7 +2227,7 @@ def db_admin_logout(request: Request, response: Response):
 
     tokens_to_revoke = {t for t in (token, cookie_tok) if t}
     if tokens_to_revoke:
-        now_iso = datetime.now().isoformat()
+        now_iso = now_peru().isoformat()
         conn = get_relational_connection()
         for tok in tokens_to_revoke:
             conn.execute(
@@ -2443,7 +2445,7 @@ def db_admin_clone_full_database(request: Request):
     import shutil
     backup_dir = os.path.join(os.path.dirname(RELATIONAL_DB_PATH), "clones")
     os.makedirs(backup_dir, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = now_peru().strftime("%Y%m%d_%H%M%S")
     rel_clone = os.path.join(backup_dir, f"technova_rds_postgresql_CLON_{stamp}.db")
     dyn_clone = os.path.join(backup_dir, f"technova_dynamodb_local_CLON_{stamp}.db")
     redis_clone = os.path.join(backup_dir, f"technova_redis_cache_CLON_{stamp}.json")

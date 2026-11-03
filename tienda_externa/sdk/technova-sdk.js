@@ -29,6 +29,24 @@
   let currentProductData = null;
   let interactionCount = 0;
 
+  function getPeruTimeFormatted() {
+    try {
+      return new Date().toLocaleTimeString('es-PE', {
+        timeZone: 'America/Lima',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      return new Date().toLocaleTimeString();
+    }
+  }
+
+  function getPeruIsoNow() {
+    return new Date(Date.now() - (5 * 3600 * 1000)).toISOString().slice(0, -1);
+  }
+
   function logAI(msg, type = 'info') {
     console.log(`[TechNova IA - ${RETAIL_ID}] ${msg}`);
     const hudList = document.getElementById('technova-hud-events');
@@ -38,7 +56,7 @@
       li.style.borderBottom = '1px solid #eee';
       li.style.color = type === 'alert' ? '#dc3545' : (type === 'success' ? '#198754' : '#495057');
       li.style.fontWeight = type === 'alert' || type === 'success' ? 'bold' : 'normal';
-      li.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      li.textContent = `[${getPeruTimeFormatted()}] ${msg}`;
       hudList.prepend(li);
     }
   }
@@ -140,7 +158,7 @@
         const data = await res.json();
         persistLiveTelemetryCrossTab({
           PK_SessionId: data.PK_SessionId || payload.session_id,
-          SK_Timestamp: data.SK_Timestamp || new Date().toISOString(),
+          SK_Timestamp: data.SK_Timestamp || getPeruIsoNow(),
           EventType: data.EventType || payload.event_type,
           ProductSku: data.ProductSku || payload.product_sku || 'LENOVO-G5',
           AnonymizedIpHash: data.AnonymizedIpHash || '8b29b07c600569e4',

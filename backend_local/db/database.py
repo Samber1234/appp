@@ -20,8 +20,44 @@ import base64
 import sqlite3
 import hashlib
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
+
+PERU_TZ = timezone(timedelta(hours=-5))
+
+
+def now_peru() -> datetime:
+    """Retorna la fecha y hora exacta en zona horaria peruana (America/Lima, UTC-5)."""
+    return datetime.now(PERU_TZ).replace(tzinfo=None)
+
+
+def normalize_to_peru_iso(ts_str: str) -> str:
+    """Convierte cualquier marca temporal ISO (UTC con Z, con offset o UTC naive +5h de Serverless) a hora peruana (UTC-5)."""
+    if not ts_str or not isinstance(ts_str, str):
+        return now_peru().isoformat()
+    clean = ts_str.strip()
+    suffix = ""
+    if "_" in clean and clean.rfind("_") > 18:
+        base_part, tail = clean.rsplit("_", 1)
+        if tail.isdigit():
+            clean = base_part
+            suffix = f"_{tail}"
+    try:
+        if clean.endswith("Z"):
+            dt_utc = datetime.fromisoformat(clean[:-1]).replace(tzinfo=timezone.utc)
+            dt_pe = dt_utc.astimezone(PERU_TZ).replace(tzinfo=None)
+            return dt_pe.isoformat() + suffix
+        dt_parsed = datetime.fromisoformat(clean)
+        if dt_parsed.tzinfo is not None:
+            dt_pe = dt_parsed.astimezone(PERU_TZ).replace(tzinfo=None)
+            return dt_pe.isoformat() + suffix
+        pe_now = now_peru()
+        if dt_parsed > pe_now + timedelta(minutes=2):
+            dt_pe = dt_parsed - timedelta(hours=5)
+            return dt_pe.isoformat() + suffix
+        return dt_parsed.isoformat() + suffix
+    except Exception:
+        return ts_str
 
 _default_db_dir = os.path.dirname(os.path.abspath(__file__))
 if os.environ.get("VERCEL") or not os.access(_default_db_dir, os.W_OK):
@@ -253,7 +289,7 @@ def init_databases(reset_to_defaults: bool = False):
             cur.execute("DELETE FROM REVOKED_TOKENS;")
             cur.execute("DELETE FROM REDEEMED_COUPONS;")
 
-        now_iso = datetime.now().isoformat()
+        now_iso = now_peru().isoformat()
 
         # Seed RETAIL_CLIENT
         cur.execute("SELECT id FROM RETAIL_CLIENT WHERE id = 'RT-001';")
@@ -348,7 +384,7 @@ def init_databases(reset_to_defaults: bool = False):
             """, (
                 "KPI-001",
                 "RT-001",
-                datetime.now().strftime("%Y-%m-%d"),
+                now_peru().strftime("%Y-%m-%d"),
                 now_iso
             ))
 
@@ -398,8 +434,8 @@ def init_databases(reset_to_defaults: bool = False):
         # Seed valid reset token for CP076 and expired token for HU0003-4
         cur.execute("SELECT token FROM PASSWORD_RESET_TOKEN WHERE token = 'valid_reset_token_2026';")
         if not cur.fetchone():
-            exp_valid = (datetime.now() + timedelta(minutes=30)).isoformat()
-            exp_old = (datetime.now() - timedelta(minutes=45)).isoformat()
+            exp_valid = (now_peru() + timedelta(minutes=30)).isoformat()
+            exp_old = (now_peru() - timedelta(minutes=45)).isoformat()
             cur.execute("""
             INSERT INTO PASSWORD_RESET_TOKEN (token, email, expires_at, is_used, created_at)
             VALUES
@@ -435,14 +471,24 @@ def init_databases(reset_to_defaults: bool = False):
 
         dcur.execute("SELECT COUNT(*) as cnt FROM Clickstream_Events;")
         if dcur.fetchone()["cnt"] == 0:
-            t1 = datetime.now().isoformat()
-            t2 = (datetime.now() + timedelta(milliseconds=15)).isoformat()
+            t1 = now_peru().isoformat()
+            t2 = (now_peru() + timedelta(milliseconds=15)).isoformat()
             dcur.execute("""
             INSERT INTO Clickstream_Events (PK_SessionId, SK_Timestamp, EventType, PageUrl, ProductSku, DwellTimeMs, AnonymizedIpHash, Compliance_Ley29733, DeviceData, RetailId, UserId)
             VALUES
                 (?, ?, 'product_view', 'https://tienda-asociada.pe/productos/lenovo-gamer-i5', 'LENOVO-G5', 8500, 'c2084c68832a8239', 1, '{"screen_width": 1920, "screen_height": 1080}', 'RT-001', NULL),
                 (?, ?, 'exit_intent', 'https://tienda-asociada.pe/carrito', 'ASUS-ROG', 14200, '4a719d38bb1092e1', 1, '{"screen_width": 1440, "screen_height": 900}', 'RT-001', NULL);
             """, ("sess_init_001_8a7b", t1, "sess_init_002_9c1d", t2))
+        else:
+            # Corregir registros previos que hubieran sido grabados en UTC (+5h) a hora peruana (UTC-5)
+            existing_ev = dcur.execute("SELECT PK_SessionId, SK_Timestamp FROM Clickstream_Events;").fetchall()
+            for row_ev in existing_ev:
+                norm_sk = normalize_to_peru_iso(row_ev["SK_Timestamp"])
+                if norm_sk != row_ev["SK_Timestamp"]:
+                    dcur.execute(
+                        "UPDATE OR IGNORE Clickstream_Events SET SK_Timestamp = ? WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
+                        (norm_sk, row_ev["PK_SessionId"], row_ev["SK_Timestamp"]),
+                    )
 
         dconn.commit()
         dconn.close()
@@ -482,7 +528,8 @@ def put_clickstream_event(record: Dict[str, Any]) -> Dict[str, Any]:
         dconn = get_dynamo_connection()
         dcur = dconn.cursor()
         pk = record["PK_SessionId"]
-        sk = record.get("SK_Timestamp") or datetime.now().isoformat()
+        raw_sk = record.get("SK_Timestamp")
+        sk = normalize_to_peru_iso(raw_sk) if raw_sk else now_peru().isoformat()
         # Asegurar unicidad de Sort Key si ocurren dos eventos en el mismo microsegundo
         dcur.execute("SELECT 1 FROM Clickstream_Events WHERE PK_SessionId = ? AND SK_Timestamp = ?;", (pk, sk))
         if dcur.fetchone():
@@ -519,6 +566,22 @@ def get_recent_clickstream_events(limit: int = 15) -> List[Dict[str, Any]]:
     with _db_lock:
         dconn = get_dynamo_connection()
         dcur = dconn.cursor()
+        all_ts_rows = dcur.execute("SELECT PK_SessionId, SK_Timestamp FROM Clickstream_Events;").fetchall()
+        dirty = False
+        for tr in all_ts_rows:
+            norm_sk = normalize_to_peru_iso(tr["SK_Timestamp"])
+            if norm_sk != tr["SK_Timestamp"]:
+                dcur.execute(
+                    "UPDATE OR IGNORE Clickstream_Events SET SK_Timestamp = ? WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
+                    (norm_sk, tr["PK_SessionId"], tr["SK_Timestamp"]),
+                )
+                dcur.execute(
+                    "DELETE FROM Clickstream_Events WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
+                    (tr["PK_SessionId"], tr["SK_Timestamp"]),
+                )
+                dirty = True
+        if dirty:
+            dconn.commit()
         dcur.execute("""
         SELECT PK_SessionId, SK_Timestamp, EventType, PageUrl, ProductSku, DwellTimeMs, AnonymizedIpHash, Compliance_Ley29733, DeviceData, RetailId, UserId
         FROM Clickstream_Events
@@ -536,7 +599,7 @@ def get_recent_clickstream_events(limit: int = 15) -> List[Dict[str, Any]]:
             dev_data = {}
         result.append({
             "PK_SessionId": r["PK_SessionId"],
-            "SK_Timestamp": r["SK_Timestamp"],
+            "SK_Timestamp": normalize_to_peru_iso(r["SK_Timestamp"]),
             "EventType": r["EventType"],
             "PageUrl": r["PageUrl"],
             "ProductSku": r["ProductSku"],
@@ -547,6 +610,7 @@ def get_recent_clickstream_events(limit: int = 15) -> List[Dict[str, Any]]:
             "RetailId": r["RetailId"],
             "UserId": r["UserId"]
         })
+    result.sort(key=lambda x: str(x.get("SK_Timestamp") or ""), reverse=True)
     return result
 
 
@@ -613,7 +677,7 @@ def update_redis_session_vector(session_id: str, event_data: Dict[str, Any]) -> 
         vec["sequence"].append(event_data["ProductSku"])
         vec["sequence"] = vec["sequence"][-10:]
     vec["total_dwell_ms"] += int(event_data.get("DwellTimeMs") or 0)
-    vec["updated_at"] = datetime.now().isoformat()
+    vec["updated_at"] = now_peru().isoformat()
     _redis_memory_store["session_vectors"][session_id] = vec
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 3)
     try:
@@ -649,7 +713,7 @@ def get_session_vector_with_failover(session_id: str, simulate_redis_down: bool 
             "session_id": session_id,
             "events_count": len(events),
             "sequence": [e.get("ProductSku") for e in events if e.get("ProductSku")],
-            "updated_at": datetime.now().isoformat()
+            "updated_at": now_peru().isoformat()
         }
         _redis_memory_store["session_vectors"][session_id] = vec
     elapsed_ms = min(round((time.perf_counter() - t0) * 1000, 3), 4.2)
@@ -691,7 +755,7 @@ def log_system_event(level: str, category: str, message: str):
         conn = get_relational_connection()
         conn.execute(
             "INSERT INTO SYSTEM_LOGS (level, category, message, created_at) VALUES (?, ?, ?, ?);",
-            (level, category, message, datetime.now().isoformat())
+            (level, category, message, now_peru().isoformat())
         )
         conn.commit()
         conn.close()
@@ -758,7 +822,7 @@ def export_compact_db_state() -> str:
             dynamo_rows = [
                 {
                     "p": r["PK_SessionId"],
-                    "s": r["SK_Timestamp"],
+                    "s": normalize_to_peru_iso(r["SK_Timestamp"]),
                     "e": r["EventType"],
                     "u": r["PageUrl"],
                     "k": r["ProductSku"],
@@ -828,9 +892,15 @@ def import_compact_db_state(token_str: str):
                         if not isinstance(ev, dict):
                             continue
                         pk = ev.get("p") or ev.get("PK_SessionId")
-                        sk = ev.get("s") or ev.get("SK_Timestamp")
-                        if not pk or not sk:
+                        raw_sk = ev.get("s") or ev.get("SK_Timestamp")
+                        if not pk or not raw_sk:
                             continue
+                        sk = normalize_to_peru_iso(raw_sk)
+                        if raw_sk != sk:
+                            dconn.execute(
+                                "DELETE FROM Clickstream_Events WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
+                                (pk, raw_sk),
+                            )
                         exists = dconn.execute(
                             "SELECT 1 FROM Clickstream_Events WHERE PK_SessionId = ? AND SK_Timestamp = ? LIMIT 1;",
                             (pk, sk),
