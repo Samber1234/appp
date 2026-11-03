@@ -295,6 +295,28 @@ def init_databases(reset_to_defaults: bool = False):
                 now_iso
             ))
 
+        # Seed cuenta exclusiva DBA SuperAdmin para el Gestor de Bases de Datos (/db-admin)
+        cur.execute("SELECT id FROM USER_PROFILE WHERE email = 'dba.admin@technova.com.pe';")
+        if not cur.fetchone():
+            dba_hash_primary = hashlib.sha256("TechNovaDBA2026!".encode("utf-8")).hexdigest()
+            dba_hash_fallback = hashlib.sha256("AdminBD2026!".encode("utf-8")).hexdigest()
+            cur.execute("""
+            INSERT INTO USER_PROFILE (id, retail_id, email, password_hash, fallback_password_hash, role, company_name, phone, ruc, failed_attempts, locked_until, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?);
+            """, (
+                "USR-DBA-001",
+                "RT-001",
+                "dba.admin@technova.com.pe",
+                dba_hash_primary,
+                dba_hash_fallback,
+                "DBA SuperAdmin",
+                "TechNova Cloud Infrastructure (DBA)",
+                "+51 944928999",
+                "20601234567",
+                now_iso,
+                now_iso
+            ))
+
         # Seed ALERT_CONFIG
         cur.execute("SELECT id FROM ALERT_CONFIG WHERE retail_id = 'RT-001';")
         if not cur.fetchone():

@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechNova Cloud - Gestor de Bases de Datos Políglota (SQL / DynamoDB / Redis)</title>
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Acceso Restringido - Autenticación DBA Requerida | TechNova Cloud</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
@@ -11,8 +14,9 @@
             background-color: #0b1120;
             color: #ffffff;
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            margin: 0;
         }
-        /* Forzar tipografía clara y nítida en todos los elementos */
         h1, h2, h3, h4, h5, h6, p, span, small, label, th, td, div {
             color: #ffffff;
         }
@@ -27,6 +31,38 @@
         }
         .text-emerald-bright {
             color: #6ee7b7 !important;
+        }
+        .dba-login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: radial-gradient(circle at top, #1e293b 0%, #0b1120 70%);
+        }
+        .dba-login-card {
+            background-color: #162033;
+            border: 1px solid #38bdf8;
+            border-radius: 14px;
+            padding: 36px 32px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65);
+        }
+        .dba-input {
+            background-color: #0f172a !important;
+            border: 1px solid #475569 !important;
+            color: #ffffff !important;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.92rem;
+        }
+        .dba-input:focus {
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.25) !important;
+        }
+        .dba-input::placeholder {
+            color: #64748b !important;
         }
         .navbar-db {
             background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
@@ -132,174 +168,50 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark navbar-db px-3 py-3">
-    <div class="container-fluid">
-        <span class="navbar-brand fw-bold d-flex align-items-center gap-2 text-bright" style="font-size: 1rem;">
-            <i class="bi bi-database-fill-gear text-cyan-bright fs-4"></i>
-            <span class="text-bright">TechNova Database Studio <small class="text-cyan-bright fw-semibold ms-1 d-none d-md-inline">| Gestor Políglota (RDS SQL + DynamoDB + Redis)</small></span>
-        </span>
-        <button class="navbar-toggler border-info" type="button" data-bs-toggle="collapse" data-bs-target="#dbAdminNavbarMenu" aria-controls="dbAdminNavbarMenu" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse justify-content-end mt-3 mt-lg-0" id="dbAdminNavbarMenu">
-            <div class="d-flex flex-column flex-lg-row gap-2">
-                <a href="/app/inicio" class="btn btn-outline-light btn-sm fw-semibold">
-                    <i class="bi bi-arrow-left me-1"></i>Volver al Dashboard SaaS
-                </a>
-                <a href="/tienda-web/" target="_blank" class="btn btn-info btn-sm fw-bold text-dark">
-                    <i class="bi bi-shop me-1 text-dark"></i>Abrir Tienda Web
-                </a>
-                <button class="btn btn-primary btn-sm fw-bold" onclick="cloneFullDatabase()">
-                    <i class="bi bi-files me-1"></i>Clonar BD Completa (Snapshot)
-                </button>
-                <button class="btn btn-warning btn-sm fw-bold text-dark" onclick="resetFactoryData()">
-                    <i class="bi bi-arrow-counterclockwise me-1 text-dark"></i>Restaurar Datos de Fábrica
-                </button>
+<!-- =========================================================================
+     1. PORTAL DE LOGIN EXCLUSIVO PARA ADMINISTRADORES DBA (/db-admin)
+     ========================================================================= -->
+<div id="dba-login-view" class="dba-login-wrapper">
+    <div class="dba-login-card">
+        <div class="text-center mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 64px; height: 64px; background: rgba(56, 189, 248, 0.12); border: 1px solid #38bdf8;">
+                <i class="bi bi-shield-lock-fill text-cyan-bright fs-2"></i>
             </div>
-        </div>
-    </div>
-</nav>
-
-<div class="container-fluid py-4 px-4">
-    <!-- Banner de Notificaciones -->
-    <div id="global-alert-banner" class="alert alert-info border-info bg-dark text-bright fw-semibold d-none mb-3 d-flex justify-content-between align-items-center">
-        <span id="global-alert-text" class="text-bright"></span>
-        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('global-alert-banner').classList.add('d-none')"></button>
-    </div>
-
-    <!-- Tarjetas de Estado de Motores -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="panel-card p-3 d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-cyan-bright small fw-bold text-uppercase">Motor Relacional ACID (PostgreSQL / SQLite WAL)</div>
-                    <div class="fs-5 fw-bold text-bright mt-1">technova_rds_postgresql.db</div>
-                    <span class="badge bg-success badge-engine mt-2 text-bright">ONLINE - 5 Entidades Principales + 5 Tablas Soporte</span>
-                </div>
-                <i class="bi bi-hdd-rack-fill fs-1 text-emerald-bright"></i>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="panel-card p-3 d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-cyan-bright small fw-bold text-uppercase">Motor NoSQL Clave-Valor (Amazon DynamoDB)</div>
-                    <div class="fs-5 fw-bold text-bright mt-1">technova_dynamodb_local.db / Clickstream_Events</div>
-                    <span class="badge bg-info text-dark badge-engine mt-2">ONLINE - PK_SessionId + SK_Timestamp (Ley 29733)</span>
-                </div>
-                <i class="bi bi-lightning-charge-fill fs-1 text-cyan-bright"></i>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="panel-card p-3 d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-amber-bright small fw-bold text-uppercase">Caché En Memoria + Failover (Amazon ElastiCache Redis)</div>
-                    <div class="fs-5 fw-bold text-bright mt-1">technova_redis_cache.json</div>
-                    <span class="badge bg-warning text-dark badge-engine mt-2">ONLINE - Lectura &lt; 5 ms + Control Frecuencia 24h</span>
-                </div>
-                <i class="bi bi-cpu-fill fs-1 text-amber-bright"></i>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <!-- Barra Lateral de Tablas -->
-        <div class="col-lg-3">
-            <div class="sidebar-card p-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold text-uppercase text-cyan-bright mb-0"><i class="bi bi-table me-1"></i>Tablas Relacionales (ACID)</h6>
-                    <button class="btn btn-sm btn-outline-light py-0 px-2" onclick="loadTablesList()" title="Refrescar conteos">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-                <div id="relational-tables-list" class="mb-3"></div>
-
-                <h6 class="fw-bold text-uppercase text-amber-bright mb-2 mt-3"><i class="bi bi-diagram-3 me-1"></i>NoSQL y Caché Redis</h6>
-                <div id="nosql-tables-list"></div>
-            </div>
+            <h4 class="fw-bold text-bright mb-1">Acceso Restringido DBA</h4>
+            <p class="small text-cyan-bright mb-0">Consola de Administración de Base de Datos Políglota</p>
         </div>
 
-        <!-- Panel Principal de Datos y Consola SQL -->
-        <div class="col-lg-9">
-            <!-- Consola SQL Interactiva -->
-            <div class="panel-card p-3 mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold mb-0 text-bright">
-                        <i class="bi bi-terminal-fill text-cyan-bright me-2"></i>Consola SQL Directa (SELECT, INSERT, UPDATE, DELETE)
-                    </h6>
-                    <div class="d-flex gap-2">
-                        <select id="sql-target-db" class="form-select form-select-sm bg-dark text-bright border-light fw-semibold" style="width: auto;">
-                            <option value="relational">BD Relacional (technova_rds_postgresql.db)</option>
-                            <option value="dynamodb">BD NoSQL (technova_dynamodb_local.db)</option>
-                        </select>
-                        <button class="btn btn-info btn-sm fw-bold text-dark" onclick="executeCustomSql()">
-                            <i class="bi bi-play-fill me-1 text-dark"></i>Ejecutar SQL
-                        </button>
-                    </div>
-                </div>
-                <textarea id="sql-query-input" class="form-control sql-editor mb-2" rows="3">SELECT id, email, company_name, ruc, role, failed_attempts, updated_at FROM USER_PROFILE;</textarea>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="small text-cyan-bright fw-bold align-self-center">Consultas rápidas:</span>
-                    <button class="btn btn-quick-sql btn-sm py-1" onclick="setQuickQuery('SELECT * FROM DAILY_KPI;', 'relational')">Ver KPIs Diarios</button>
-                    <button class="btn btn-quick-sql btn-sm py-1" onclick="setQuickQuery('SELECT * FROM ALERT_CONFIG;', 'relational')">Ver Config Alertas</button>
-                    <button class="btn btn-quick-sql btn-sm py-1" onclick="setQuickQuery('SELECT * FROM PRODUCT_CATALOG;', 'relational')">Ver Catálogo Productos</button>
-                    <button class="btn btn-quick-sql btn-sm py-1" onclick="setQuickQuery('SELECT * FROM SESSION_PREDICTION ORDER BY created_at DESC;', 'relational')">Ver Predicciones y Conversiones</button>
-                    <button class="btn btn-quick-sql btn-sm py-1" onclick="setQuickQuery('SELECT * FROM Clickstream_Events ORDER BY event_id DESC LIMIT 20;', 'dynamodb')">Ver Eventos Clickstream (DynamoDB)</button>
-                </div>
-                <div id="sql-status-msg" class="mt-2 small fw-bold"></div>
+        <div id="dba-login-alert" class="alert alert-danger py-2 px-3 small fw-semibold d-none mb-3" style="background:#450a0a; border-color:#dc2626; color:#fecaca;"></div>
+
+        <form onsubmit="event.preventDefault(); dbaLogin();">
+            <div class="mb-3">
+                <label for="dba-username" class="form-label small fw-bold text-cyan-bright">Usuario o Correo DBA</label>
+                <input type="text" id="dba-username" class="form-control dba-input" value="" placeholder="dba.admin@technova.com.pe" autocomplete="username">
             </div>
 
-            <!-- Visor y Editor de Tabla Seleccionada -->
-            <div class="panel-card p-3">
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                    <div>
-                        <h5 class="fw-bold text-bright mb-1" id="current-table-title">Tabla: USER_PROFILE</h5>
-                        <div class="small text-cyan-bright fw-semibold" id="current-table-subtitle">Mostrando registros almacenados físicamente en disco</div>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-success btn-sm fw-bold" id="btn-insert-row" onclick="openRowModal('insert')">
-                            <i class="bi bi-plus-circle me-1"></i>Nuevo Registro
-                        </button>
-                        <button class="btn btn-primary btn-sm fw-bold" id="btn-clone-table" onclick="cloneCurrentTable()">
-                            <i class="bi bi-copy me-1"></i>Clonar Tabla Actual
-                        </button>
-                        <button class="btn btn-outline-light btn-sm fw-semibold" onclick="reloadCurrentTable()">
-                            <i class="bi bi-arrow-repeat me-1"></i>Recargar Tabla
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-dark-custom table-striped table-hover table-bordered align-middle mb-0">
-                        <thead id="db-table-head"></thead>
-                        <tbody id="db-table-body"></tbody>
-                    </table>
-                </div>
+            <div class="mb-4">
+                <label for="dba-password" class="form-label small fw-bold text-cyan-bright">Contraseña de Seguridad DBA</label>
+                <input type="password" id="dba-password" class="form-control dba-input" value="" placeholder="********" autocomplete="current-password">
             </div>
+
+            <button type="submit" id="dba-login-btn" class="btn btn-info w-100 fw-bold text-dark py-2">
+                <i class="bi bi-key-fill me-1 text-dark"></i>Iniciar Sesión en Gestor BD
+            </button>
+        </form>
+
+        <div class="mt-4 pt-3 border-top border-secondary text-center">
+            <small style="color: #94a3b8; font-size: 0.78rem;">
+                Acceso exclusivo para Administradores de Base de Datos (DBA) autorizados por TechNova Cloud.
+            </small>
         </div>
     </div>
 </div>
 
-<!-- Modal para Editar / Clonar / Insertar Fila -->
-<div class="modal fade" id="rowEditorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content bg-dark text-bright border-info">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title fw-bold text-cyan-bright" id="rowEditorModalTitle">Editar Registro</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="clone-helper-note" class="alert alert-primary py-2 small fw-semibold d-none text-dark">
-                    Modo Clonación Activo: Se ha generado una nueva Clave Primaria automática para duplicar este registro sin sobrescribir el original.
-                </div>
-                <form id="row-editor-form" class="row g-3"></form>
-            </div>
-            <div class="modal-footer border-secondary">
-                <button type="button" class="btn btn-outline-light btn-sm fw-semibold" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-info btn-sm fw-bold text-dark" onclick="saveRowChanges()">Guardar en Base de Datos</button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- =========================================================================
+     2. PUNTO DE MONTAJE PROTEGIDO DE LA CONSOLA DBA
+     Solo se inyecta tras validar JWT DBA en GET /api/v1/db-admin/console-shell
+     ========================================================================= -->
+<div id="dba-console-mount"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -308,43 +220,171 @@ let currentColumns = [];
 let currentPk = 'id';
 let currentRows = [];
 let rowModalInstance = null;
+let consoleMounted = false;
 
-function getAdminToken() {
-    return sessionStorage.getItem('retail_token') || '';
+function getDbaToken() {
+    return (sessionStorage.getItem('dba_token') || '').trim();
+}
+
+function hasValidDbaToken() {
+    const tok = getDbaToken();
+    if (!tok) return false;
+    const parts = tok.split('.');
+    return parts.length === 3 && parts[0].length > 0 && parts[1].length > 0 && parts[2].length > 0;
+}
+
+function showDbaLoginError(msg) {
+    const alertEl = document.getElementById('dba-login-alert');
+    if (!alertEl) return;
+    if (!msg) {
+        alertEl.classList.add('d-none');
+        alertEl.textContent = '';
+    } else {
+        alertEl.textContent = msg;
+        alertEl.classList.remove('d-none');
+    }
+}
+
+function purgeDbaSessionAndShowLogin(errMsg) {
+    sessionStorage.removeItem('dba_token');
+    sessionStorage.removeItem('dba_user');
+    consoleMounted = false;
+    rowModalInstance = null;
+
+    const mount = document.getElementById('dba-console-mount');
+    if (mount) mount.innerHTML = '';
+
+    const loginView = document.getElementById('dba-login-view');
+    if (loginView) loginView.style.display = 'flex';
+
+    document.title = 'Acceso Restringido - Autenticación DBA Requerida | TechNova Cloud';
+    if (errMsg) {
+        showDbaLoginError(errMsg);
+    }
+}
+
+async function dbaLogin() {
+    const userEl = document.getElementById('dba-username');
+    const passEl = document.getElementById('dba-password');
+    const username = userEl ? userEl.value.trim() : '';
+    const password = passEl ? passEl.value : '';
+
+    if (!username || !password) {
+        showDbaLoginError('Ingrese su usuario/correo DBA y contraseña.');
+        return;
+    }
+
+    showDbaLoginError('');
+    try {
+        const res = await fetch('/api/v1/db-admin/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username, password: password})
+        });
+        const data = await res.json();
+        if (res.ok && data.token) {
+            sessionStorage.setItem('dba_token', data.token);
+            sessionStorage.setItem('dba_user', data.email || username);
+            if (passEl) passEl.value = '';
+            await mountAndInitializeConsole();
+        } else {
+            showDbaLoginError(data.detail || 'Credenciales DBA inválidas o sin privilegios de administración.');
+        }
+    } catch (e) {
+        showDbaLoginError('Error de conexión con el servidor de autenticación DBA.');
+    }
+}
+
+async function dbaLogout() {
+    const token = getDbaToken();
+    if (token) {
+        try {
+            await fetch('/api/v1/db-admin/logout', {
+                method: 'POST',
+                headers: {'Authorization': 'Bearer ' + token}
+            });
+        } catch (e) {}
+    }
+    purgeDbaSessionAndShowLogin('');
 }
 
 async function dbAuthFetch(url, options = {}) {
-    const token = getAdminToken();
+    const token = getDbaToken();
     if (!token) {
-        window.location.replace('/login');
+        purgeDbaSessionAndShowLogin('Sesión DBA requerida. Inicie sesión para continuar.');
         throw new Error('NO_TOKEN');
     }
     const headers = Object.assign({}, options.headers || {}, {
         'Authorization': 'Bearer ' + token
     });
-    const res = await fetch(url, Object.assign({}, options, { headers: headers, cache: 'no-store' }));
+    const res = await fetch(url, Object.assign({}, options, {headers: headers, cache: 'no-store'}));
     if (res.status === 401 || res.status === 403) {
-        sessionStorage.removeItem('retail_token');
-        sessionStorage.removeItem('retail_id');
-        window.location.replace('/login');
+        purgeDbaSessionAndShowLogin('Su sesión DBA ha expirado o fue revocada. Inicie sesión nuevamente.');
         throw new Error('UNAUTHORIZED');
     }
     return res;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (!getAdminToken()) {
-        window.location.replace('/login');
+async function mountAndInitializeConsole() {
+    if (!hasValidDbaToken()) {
+        purgeDbaSessionAndShowLogin('');
         return;
     }
-    rowModalInstance = new bootstrap.Modal(document.getElementById('rowEditorModal'));
-    loadTablesList();
-    loadTableData('USER_PROFILE');
+    try {
+        const res = await dbAuthFetch('/api/v1/db-admin/console-shell');
+        if (!res.ok) {
+            purgeDbaSessionAndShowLogin('No autorizado para cargar la consola de base de datos.');
+            return;
+        }
+        const html = await res.text();
+        const mount = document.getElementById('dba-console-mount');
+        if (mount) mount.innerHTML = html;
+
+        const loginView = document.getElementById('dba-login-view');
+        if (loginView) loginView.style.display = 'none';
+
+        const badgeEl = document.getElementById('dba-user-badge');
+        const dbaUser = sessionStorage.getItem('dba_user') || 'dba.admin@technova.com.pe';
+        if (badgeEl) {
+            badgeEl.innerHTML = `<i class="bi bi-shield-lock-fill me-1 text-emerald-bright"></i>DBA: ${dbaUser}`;
+        }
+
+        document.title = 'TechNova Cloud - Gestor de Bases de Datos Políglota (DBA)';
+        consoleMounted = true;
+        const modalEl = document.getElementById('rowEditorModal');
+        if (modalEl) {
+            rowModalInstance = new bootstrap.Modal(modalEl);
+        }
+        await loadTablesList();
+        await loadTableData('USER_PROFILE');
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            purgeDbaSessionAndShowLogin('Error de red al cargar la consola DBA.');
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (hasValidDbaToken()) {
+        mountAndInitializeConsole();
+    } else {
+        purgeDbaSessionAndShowLogin('');
+    }
+});
+
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted || !hasValidDbaToken()) {
+        if (!hasValidDbaToken()) {
+            purgeDbaSessionAndShowLogin('');
+        }
+    }
 });
 
 function showBanner(msg, isError = false) {
     const banner = document.getElementById('global-alert-banner');
-    document.getElementById('global-alert-text').textContent = msg;
+    const textEl = document.getElementById('global-alert-text');
+    if (!banner || !textEl) return;
+    textEl.textContent = msg;
     banner.classList.toggle('border-danger', isError);
     banner.classList.toggle('border-info', !isError);
     banner.classList.remove('d-none');
@@ -356,6 +396,7 @@ async function loadTablesList() {
         const data = await res.json();
 
         const relContainer = document.getElementById('relational-tables-list');
+        if (!relContainer) return;
         relContainer.innerHTML = '';
         (data.relational_tables || []).forEach(t => {
             const activeClass = (t.name === currentTable) ? 'active' : '';
@@ -368,16 +409,18 @@ async function loadTablesList() {
         });
 
         const nosqlContainer = document.getElementById('nosql-tables-list');
-        nosqlContainer.innerHTML = `
-            <button class="table-btn ${currentTable === 'Clickstream_Events' ? 'active' : ''}" onclick="loadTableData('Clickstream_Events')">
-                <span><i class="bi bi-lightning-charge me-2 text-amber-bright"></i>Clickstream_Events (DynamoDB)</span>
-                <span class="badge bg-info text-dark fw-bold">${data.dynamodb_count ?? 0}</span>
-            </button>
-            <button class="table-btn ${currentTable === 'REDIS_CACHE' ? 'active' : ''}" onclick="loadTableData('REDIS_CACHE')">
-                <span><i class="bi bi-cpu me-2 text-emerald-bright"></i>REDIS_CACHE (Vectores y TTL 24h)</span>
-                <span class="badge bg-warning text-dark fw-bold">${data.redis_keys ?? 0}</span>
-            </button>
-        `;
+        if (nosqlContainer) {
+            nosqlContainer.innerHTML = `
+                <button class="table-btn ${currentTable === 'Clickstream_Events' ? 'active' : ''}" onclick="loadTableData('Clickstream_Events')">
+                    <span><i class="bi bi-lightning-charge me-2 text-amber-bright"></i>Clickstream_Events (DynamoDB)</span>
+                    <span class="badge bg-info text-dark fw-bold">${data.dynamodb_count ?? 0}</span>
+                </button>
+                <button class="table-btn ${currentTable === 'REDIS_CACHE' ? 'active' : ''}" onclick="loadTableData('REDIS_CACHE')">
+                    <span><i class="bi bi-cpu me-2 text-emerald-bright"></i>REDIS_CACHE (Vectores y TTL 24h)</span>
+                    <span class="badge bg-warning text-dark fw-bold">${data.redis_keys ?? 0}</span>
+                </button>
+            `;
+        }
     } catch (e) {
         if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
             showBanner('Error de conexión con el servidor al cargar la lista de tablas.', true);
@@ -390,7 +433,9 @@ async function loadTableData(tableName) {
         currentTable = tableName;
         loadTablesList();
 
-        document.getElementById('current-table-title').textContent = `Tabla Activa: ${tableName}`;
+        const titleEl = document.getElementById('current-table-title');
+        if (titleEl) titleEl.textContent = `Tabla Activa: ${tableName}`;
+
         const res = await dbAuthFetch(`/api/v1/db-admin/table/${encodeURIComponent(tableName)}`);
         const data = await res.json();
 
@@ -398,12 +443,16 @@ async function loadTableData(tableName) {
         currentPk = data.primary_key || currentColumns[0] || 'id';
         currentRows = data.rows || [];
 
-        document.getElementById('current-table-subtitle').textContent =
-            `Motor: ${data.engine} | Clave Primaria (PK): ${currentPk} | Total registros: ${currentRows.length}`;
+        const subEl = document.getElementById('current-table-subtitle');
+        if (subEl) {
+            subEl.textContent = `Motor: ${data.engine} | Clave Primaria (PK): ${currentPk} | Total registros: ${currentRows.length}`;
+        }
 
         const isRedis = (tableName === 'REDIS_CACHE');
-        document.getElementById('btn-insert-row').style.display = isRedis ? 'none' : 'inline-block';
-        document.getElementById('btn-clone-table').style.display = isRedis ? 'none' : 'inline-block';
+        const insBtn = document.getElementById('btn-insert-row');
+        const clnBtn = document.getElementById('btn-clone-table');
+        if (insBtn) insBtn.style.display = isRedis ? 'none' : 'inline-block';
+        if (clnBtn) clnBtn.style.display = isRedis ? 'none' : 'inline-block';
 
         renderTableGrid(currentColumns, currentRows, !isRedis);
     } catch (e) {
@@ -420,6 +469,7 @@ function reloadCurrentTable() {
 function renderTableGrid(columns, rows, allowActions = true) {
     const thead = document.getElementById('db-table-head');
     const tbody = document.getElementById('db-table-body');
+    if (!thead || !tbody) return;
 
     if (!columns.length) {
         thead.innerHTML = '';
@@ -480,6 +530,7 @@ function renderTableGrid(columns, rows, allowActions = true) {
 function openRowModal(mode, rowIndex = null) {
     const form = document.getElementById('row-editor-form');
     const cloneNote = document.getElementById('clone-helper-note');
+    if (!form || !cloneNote) return;
     form.innerHTML = '';
 
     let rowData = {};
@@ -495,7 +546,6 @@ function openRowModal(mode, rowIndex = null) {
         } else {
             rowData[currentPk] = `${origPk || 'ID'}_CLON_${Math.floor(Math.random() * 900 + 100)}`;
         }
-        // Si tiene columna email (como USER_PROFILE), ajustar email clonado para respetar UNIQUE
         if (rowData.email) {
             rowData.email = `clon_${Math.floor(Math.random() * 900 + 100)}_${rowData.email}`;
         }
@@ -520,11 +570,12 @@ function openRowModal(mode, rowIndex = null) {
             </div>
         `;
     });
-    rowModalInstance.show();
+    if (rowModalInstance) rowModalInstance.show();
 }
 
 async function saveRowChanges() {
     const form = document.getElementById('row-editor-form');
+    if (!form) return;
     const inputs = form.querySelectorAll('input');
     const payload = {};
     inputs.forEach(inp => {
@@ -541,7 +592,7 @@ async function saveRowChanges() {
         });
         const data = await res.json();
         if (res.ok) {
-            rowModalInstance.hide();
+            if (rowModalInstance) rowModalInstance.hide();
             showBanner(`Registro guardado correctamente en la tabla ${currentTable}.`);
             loadTableData(currentTable);
         } else {
@@ -628,6 +679,7 @@ async function executeCustomSql() {
     const sql = document.getElementById('sql-query-input').value.trim();
     const targetDb = document.getElementById('sql-target-db').value;
     const msgEl = document.getElementById('sql-status-msg');
+    if (!msgEl) return;
 
     try {
         const res = await dbAuthFetch('/api/v1/db-admin/query', {
@@ -643,14 +695,14 @@ async function executeCustomSql() {
 
         msgEl.innerHTML = `<span class="text-emerald-bright fw-bold"><i class="bi bi-check-circle me-1"></i>${data.message}</span>`;
         if (data.columns && data.rows) {
-            document.getElementById('current-table-title').textContent = `Resultado de Consulta SQL`;
+            document.getElementById('current-table-title').textContent = 'Resultado de Consulta SQL';
             document.getElementById('current-table-subtitle').textContent = `${data.rows.length} filas devueltas`;
             renderTableGrid(data.columns, data.rows, false);
         }
         loadTablesList();
     } catch (e) {
         if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
-            msgEl.innerHTML = `<span class="text-danger fw-bold">Error de conexión con el servidor SQL.</span>`;
+            msgEl.innerHTML = '<span class="text-danger fw-bold">Error de conexión con el servidor SQL.</span>';
         }
     }
 }
