@@ -13,6 +13,7 @@ from .database import (
     is_client_dismissed,
     log_system_event,
     get_system_logs,
+    load_canonical_store_catalog,
     RELATIONAL_DB_PATH,
     DYNAMO_DB_PATH
 )

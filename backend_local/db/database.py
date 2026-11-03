@@ -43,8 +43,29 @@ RELATIONAL_DB_PATH = os.path.join(DB_DIR, "technova_rds_postgresql.db")
 DYNAMO_DB_PATH = os.path.join(DB_DIR, "technova_dynamodb_local.db")
 DYNAMO_JSON_MIRROR = os.path.join(DB_DIR, "Clickstream_Events.json")
 REDIS_JSON_PATH = os.path.join(DB_DIR, "technova_redis_cache.json")
+STORE_CATALOG_JSON_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tienda_externa", "catalog_72.json")
+)
 
 _db_lock = threading.RLock()
+
+
+def load_canonical_store_catalog() -> List[Dict[str, Any]]:
+    """Carga el catálogo canónico de 72 productos de /tienda-web para consistencia 100% entre tienda y panel."""
+    if os.path.exists(STORE_CATALOG_JSON_PATH):
+        try:
+            with open(STORE_CATALOG_JSON_PATH, "r", encoding="utf-8") as f:
+                items = json.load(f)
+            if isinstance(items, list) and len(items) > 0:
+                return items
+        except Exception:
+            pass
+    return [
+        {"sku": "LENOVO-G5", "name": "Laptop Lenovo Gamer i5 13va Gen", "category": "Laptops & Ultrabooks", "price": 4199.00, "stock": 15, "ai_recommended": True, "match_score": 97},
+        {"sku": "ASUS-ROG", "name": "Laptop ASUS ROG Strix G16 Intel i7", "category": "Laptops & Ultrabooks", "price": 5899.00, "stock": 9, "ai_recommended": False, "match_score": 86},
+        {"sku": "HP-VICTUS", "name": "Laptop HP Victus 15 AMD Ryzen 5", "category": "Laptops & Ultrabooks", "price": 3249.00, "stock": 22, "ai_recommended": False, "match_score": 85},
+        {"sku": "MSI-CYBORG", "name": "Laptop MSI Cyborg 15 Intel Core i5", "category": "Laptops & Ultrabooks", "price": 3899.00, "stock": 14, "ai_recommended": True, "match_score": 94},
+    ]
 
 
 def get_relational_connection() -> sqlite3.Connection:
@@ -309,20 +330,40 @@ def init_databases(reset_to_defaults: bool = False):
                 now_iso
             ))
 
-        # Seed PRODUCT_CATALOG
+        # Seed PRODUCT_CATALOG (Sincronizado 100% con los 72 productos de /tienda-web)
         cur.execute("SELECT COUNT(*) as cnt FROM PRODUCT_CATALOG;")
-        if cur.fetchone()["cnt"] == 0:
-            initial_products = [
-                ("LENOVO-G5", "RT-001", "Laptop Lenovo Gamer i5 13va Gen", 4199.00, "Laptops Gamer", 14, 1, 98, now_iso),
-                ("ASUS-ROG", "RT-001", "Laptop ASUS ROG Strix i7 13va", 5899.00, "Laptops Gamer", 8, 0, 84, now_iso),
-                ("HP-VICTUS", "RT-001", "Laptop HP Victus AMD Ryzen 5", 3249.00, "Laptops Gamer", 19, 0, 79, now_iso),
-                ("MSI-CYBORG", "RT-001", "Laptop MSI Cyborg 15 Intel i5", 3899.00, "Laptops Gamer", 11, 1, 91, now_iso),
-                ("LAP-ASUS-G16", "RT-001", "Laptop ASUS ROG Strix G16", 5499.00, "Laptops Gamer", 9, 1, 98, now_iso),
+        existing_catalog_cnt = cur.fetchone()["cnt"]
+        cur.execute("SELECT COUNT(*) as legacy_cnt FROM PRODUCT_CATALOG WHERE sku = 'LAP-ASUS-G16' OR (sku = 'LENOVO-G5' AND category = 'Laptops Gamer');")
+        has_legacy_seed = cur.fetchone()["legacy_cnt"] > 0
+        canonical_items = load_canonical_store_catalog()
+        if existing_catalog_cnt < len(canonical_items) or has_legacy_seed:
+            cur.execute("DELETE FROM PRODUCT_CATALOG WHERE sku = 'LAP-ASUS-G16';")
+            catalog_tuples = [
+                (
+                    str(item["sku"]).strip().upper(),
+                    "RT-001",
+                    str(item["name"]).strip(),
+                    float(item["price"]),
+                    str(item.get("category", "Laptops & Ultrabooks")).strip(),
+                    int(item["stock"]),
+                    1 if item.get("ai_recommended") else 0,
+                    int(item.get("match_score", 88)),
+                    now_iso,
+                )
+                for item in canonical_items
             ]
             cur.executemany("""
             INSERT INTO PRODUCT_CATALOG (sku, retail_id, name, price, category, stock, ai_recommended, match_score, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-            """, initial_products)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(sku) DO UPDATE SET
+                name = excluded.name,
+                price = excluded.price,
+                category = excluded.category,
+                stock = excluded.stock,
+                ai_recommended = excluded.ai_recommended,
+                match_score = excluded.match_score,
+                updated_at = excluded.updated_at;
+            """, catalog_tuples)
 
         # Seed REDEEMED_COUPONS (CP071: 'TECHNOVA30' ya canjeado para ORD-9821)
         cur.execute("SELECT coupon_code FROM REDEEMED_COUPONS WHERE coupon_code = 'TECHNOVA30';")
@@ -676,9 +717,13 @@ def export_compact_db_state() -> str:
             snapshot: Dict[str, Any] = {"ts": _worker_state_ts, "tables": {}}
             for t in all_tables:
                 if t == "SESSION_PREDICTION":
-                    rows = [dict(r) for r in conn.execute("SELECT * FROM SESSION_PREDICTION ORDER BY created_at DESC LIMIT 10;").fetchall()]
+                    rows = [dict(r) for r in conn.execute("SELECT * FROM SESSION_PREDICTION ORDER BY created_at DESC LIMIT 6;").fetchall()]
+                elif t == "PRODUCT_CATALOG":
+                    rows = [dict(r) for r in conn.execute("SELECT * FROM PRODUCT_CATALOG ORDER BY updated_at DESC LIMIT 6;").fetchall()]
+                elif t == "REVOKED_TOKENS":
+                    rows = [dict(r) for r in conn.execute("SELECT * FROM REVOKED_TOKENS ORDER BY revoked_at DESC LIMIT 15;").fetchall()]
                 else:
-                    rows = [dict(r) for r in conn.execute(f"SELECT * FROM {t} LIMIT 25;").fetchall()]
+                    rows = [dict(r) for r in conn.execute(f"SELECT * FROM {t} LIMIT 20;").fetchall()]
                 snapshot["tables"][t] = rows
             raw_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             compressed = zlib.compress(raw_bytes, level=9)
@@ -717,7 +762,8 @@ def import_compact_db_state(token_str: str):
                         conn.execute(f"CREATE TABLE IF NOT EXISTS {tname} ({cols_def});")
                         existing_tables.add(tname)
                     if tname in existing_tables:
-                        conn.execute(f"DELETE FROM {tname};")
+                        if tname not in ("PRODUCT_CATALOG", "REVOKED_TOKENS"):
+                            conn.execute(f"DELETE FROM {tname};")
                         for row in rows:
                             if not isinstance(row, dict) or not row:
                                 continue

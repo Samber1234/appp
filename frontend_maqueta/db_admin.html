@@ -309,67 +309,108 @@ let currentPk = 'id';
 let currentRows = [];
 let rowModalInstance = null;
 
+function getAdminToken() {
+    return sessionStorage.getItem('retail_token') || '';
+}
+
+async function dbAuthFetch(url, options = {}) {
+    const token = getAdminToken();
+    if (!token) {
+        window.location.replace('/login');
+        throw new Error('NO_TOKEN');
+    }
+    const headers = Object.assign({}, options.headers || {}, {
+        'Authorization': 'Bearer ' + token
+    });
+    const res = await fetch(url, Object.assign({}, options, { headers: headers, cache: 'no-store' }));
+    if (res.status === 401 || res.status === 403) {
+        sessionStorage.removeItem('retail_token');
+        sessionStorage.removeItem('retail_id');
+        window.location.replace('/login');
+        throw new Error('UNAUTHORIZED');
+    }
+    return res;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    if (!getAdminToken()) {
+        window.location.replace('/login');
+        return;
+    }
     rowModalInstance = new bootstrap.Modal(document.getElementById('rowEditorModal'));
     loadTablesList();
     loadTableData('USER_PROFILE');
 });
 
-function showBanner(msg) {
+function showBanner(msg, isError = false) {
     const banner = document.getElementById('global-alert-banner');
     document.getElementById('global-alert-text').textContent = msg;
+    banner.classList.toggle('border-danger', isError);
+    banner.classList.toggle('border-info', !isError);
     banner.classList.remove('d-none');
 }
 
 async function loadTablesList() {
-    const res = await fetch('/api/v1/db-admin/tables');
-    const data = await res.json();
+    try {
+        const res = await dbAuthFetch('/api/v1/db-admin/tables');
+        const data = await res.json();
 
-    const relContainer = document.getElementById('relational-tables-list');
-    relContainer.innerHTML = '';
-    data.relational_tables.forEach(t => {
-        const activeClass = (t.name === currentTable) ? 'active' : '';
-        relContainer.innerHTML += `
-            <button class="table-btn ${activeClass}" onclick="loadTableData('${t.name}')">
-                <span><i class="bi bi-table me-2 text-cyan-bright"></i>${t.name}</span>
-                <span class="badge bg-info text-dark fw-bold">${t.count}</span>
+        const relContainer = document.getElementById('relational-tables-list');
+        relContainer.innerHTML = '';
+        (data.relational_tables || []).forEach(t => {
+            const activeClass = (t.name === currentTable) ? 'active' : '';
+            relContainer.innerHTML += `
+                <button class="table-btn ${activeClass}" onclick="loadTableData('${t.name}')">
+                    <span><i class="bi bi-table me-2 text-cyan-bright"></i>${t.name}</span>
+                    <span class="badge bg-info text-dark fw-bold">${t.count}</span>
+                </button>
+            `;
+        });
+
+        const nosqlContainer = document.getElementById('nosql-tables-list');
+        nosqlContainer.innerHTML = `
+            <button class="table-btn ${currentTable === 'Clickstream_Events' ? 'active' : ''}" onclick="loadTableData('Clickstream_Events')">
+                <span><i class="bi bi-lightning-charge me-2 text-amber-bright"></i>Clickstream_Events (DynamoDB)</span>
+                <span class="badge bg-info text-dark fw-bold">${data.dynamodb_count ?? 0}</span>
+            </button>
+            <button class="table-btn ${currentTable === 'REDIS_CACHE' ? 'active' : ''}" onclick="loadTableData('REDIS_CACHE')">
+                <span><i class="bi bi-cpu me-2 text-emerald-bright"></i>REDIS_CACHE (Vectores y TTL 24h)</span>
+                <span class="badge bg-warning text-dark fw-bold">${data.redis_keys ?? 0}</span>
             </button>
         `;
-    });
-
-    const nosqlContainer = document.getElementById('nosql-tables-list');
-    nosqlContainer.innerHTML = `
-        <button class="table-btn ${currentTable === 'Clickstream_Events' ? 'active' : ''}" onclick="loadTableData('Clickstream_Events')">
-            <span><i class="bi bi-lightning-charge me-2 text-amber-bright"></i>Clickstream_Events (DynamoDB)</span>
-            <span class="badge bg-info text-dark fw-bold">${data.dynamodb_count}</span>
-        </button>
-        <button class="table-btn ${currentTable === 'REDIS_CACHE' ? 'active' : ''}" onclick="loadTableData('REDIS_CACHE')">
-            <span><i class="bi bi-cpu me-2 text-emerald-bright"></i>REDIS_CACHE (Vectores y TTL 24h)</span>
-            <span class="badge bg-warning text-dark fw-bold">${data.redis_keys}</span>
-        </button>
-    `;
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            showBanner('Error de conexión con el servidor al cargar la lista de tablas.', true);
+        }
+    }
 }
 
 async function loadTableData(tableName) {
-    currentTable = tableName;
-    loadTablesList();
+    try {
+        currentTable = tableName;
+        loadTablesList();
 
-    document.getElementById('current-table-title').textContent = `Tabla Activa: ${tableName}`;
-    const res = await fetch(`/api/v1/db-admin/table/${encodeURIComponent(tableName)}`);
-    const data = await res.json();
+        document.getElementById('current-table-title').textContent = `Tabla Activa: ${tableName}`;
+        const res = await dbAuthFetch(`/api/v1/db-admin/table/${encodeURIComponent(tableName)}`);
+        const data = await res.json();
 
-    currentColumns = data.columns || [];
-    currentPk = data.primary_key || currentColumns[0] || 'id';
-    currentRows = data.rows || [];
+        currentColumns = data.columns || [];
+        currentPk = data.primary_key || currentColumns[0] || 'id';
+        currentRows = data.rows || [];
 
-    document.getElementById('current-table-subtitle').textContent =
-        `Motor: ${data.engine} | Clave Primaria (PK): ${currentPk} | Total registros: ${currentRows.length}`;
+        document.getElementById('current-table-subtitle').textContent =
+            `Motor: ${data.engine} | Clave Primaria (PK): ${currentPk} | Total registros: ${currentRows.length}`;
 
-    const isRedis = (tableName === 'REDIS_CACHE');
-    document.getElementById('btn-insert-row').style.display = isRedis ? 'none' : 'inline-block';
-    document.getElementById('btn-clone-table').style.display = isRedis ? 'none' : 'inline-block';
+        const isRedis = (tableName === 'REDIS_CACHE');
+        document.getElementById('btn-insert-row').style.display = isRedis ? 'none' : 'inline-block';
+        document.getElementById('btn-clone-table').style.display = isRedis ? 'none' : 'inline-block';
 
-    renderTableGrid(currentColumns, currentRows, !isRedis);
+        renderTableGrid(currentColumns, currentRows, !isRedis);
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            showBanner('Error de conexión al consultar los registros de la tabla.', true);
+        }
+    }
 }
 
 function reloadCurrentTable() {
@@ -492,18 +533,24 @@ async function saveRowChanges() {
         }
     });
 
-    const res = await fetch(`/api/v1/db-admin/table/${encodeURIComponent(currentTable)}/row`, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({row: payload})
-    });
-    const data = await res.json();
-    if (res.ok) {
-        rowModalInstance.hide();
-        showBanner(`Registro guardado correctamente en la tabla ${currentTable}.`);
-        loadTableData(currentTable);
-    } else {
-        alert('Error al guardar en base de datos: ' + (data.detail || JSON.stringify(data)));
+    try {
+        const res = await dbAuthFetch(`/api/v1/db-admin/table/${encodeURIComponent(currentTable)}/row`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({row: payload})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            rowModalInstance.hide();
+            showBanner(`Registro guardado correctamente en la tabla ${currentTable}.`);
+            loadTableData(currentTable);
+        } else {
+            showBanner('Error al guardar en base de datos: ' + (data.detail || JSON.stringify(data)), true);
+        }
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            showBanner('Error de conexión con el servidor al guardar cambios.', true);
+        }
     }
 }
 
@@ -512,28 +559,40 @@ async function cloneCurrentTable() {
     const newName = prompt(`Ingrese el nombre para la nueva tabla clonada a partir de '${currentTable}':`, defaultName);
     if (!newName) return;
 
-    const res = await fetch(`/api/v1/db-admin/table/${encodeURIComponent(currentTable)}/clone-table`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({new_table_name: newName})
-    });
-    const data = await res.json();
-    if (res.ok) {
-        showBanner(data.message);
-        await loadTablesList();
-        loadTableData(data.new_table);
-    } else {
-        alert('Error al clonar tabla: ' + (data.detail || 'Error'));
+    try {
+        const res = await dbAuthFetch(`/api/v1/db-admin/table/${encodeURIComponent(currentTable)}/clone-table`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({new_table_name: newName})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showBanner(data.message);
+            await loadTablesList();
+            loadTableData(data.new_table);
+        } else {
+            showBanner('Error al clonar tabla: ' + (data.detail || 'Error'), true);
+        }
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            showBanner('Error de conexión al clonar la tabla.', true);
+        }
     }
 }
 
 async function cloneFullDatabase() {
-    const res = await fetch('/api/v1/db-admin/clone-database', {method: 'POST'});
-    const data = await res.json();
-    if (res.ok) {
-        showBanner(`${data.message} Archivos creados: ${data.files_created.join(', ')}`);
-    } else {
-        alert('Error al clonar la base de datos.');
+    try {
+        const res = await dbAuthFetch('/api/v1/db-admin/clone-database', {method: 'POST'});
+        const data = await res.json();
+        if (res.ok) {
+            showBanner(`${data.message} Archivos creados: ${data.files_created.join(', ')}`);
+        } else {
+            showBanner('Error al clonar la base de datos: ' + (data.detail || ''), true);
+        }
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            showBanner('Error de conexión al clonar la base de datos.', true);
+        }
     }
 }
 
@@ -541,15 +600,21 @@ async function deleteRow(pkValue) {
     if (!confirm(`¿Seguro que deseas eliminar el registro con ${currentPk} = ${pkValue} de la tabla ${currentTable}?`)) {
         return;
     }
-    const res = await fetch(`/api/v1/db-admin/table/${encodeURIComponent(currentTable)}/row?pk_col=${encodeURIComponent(currentPk)}&pk_val=${encodeURIComponent(pkValue)}`, {
-        method: 'DELETE'
-    });
-    if (res.ok) {
-        showBanner(`Registro '${pkValue}' eliminado de ${currentTable}.`);
-        loadTableData(currentTable);
-    } else {
-        const err = await res.json();
-        alert('No se pudo eliminar: ' + (err.detail || 'Error'));
+    try {
+        const res = await dbAuthFetch(`/api/v1/db-admin/table/${encodeURIComponent(currentTable)}/row?pk_col=${encodeURIComponent(currentPk)}&pk_val=${encodeURIComponent(pkValue)}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            showBanner(`Registro '${pkValue}' eliminado de ${currentTable}.`);
+            loadTableData(currentTable);
+        } else {
+            const err = await res.json();
+            showBanner('No se pudo eliminar: ' + (err.detail || 'Error'), true);
+        }
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            showBanner('Error de conexión al eliminar registro.', true);
+        }
     }
 }
 
@@ -564,34 +629,51 @@ async function executeCustomSql() {
     const targetDb = document.getElementById('sql-target-db').value;
     const msgEl = document.getElementById('sql-status-msg');
 
-    const res = await fetch('/api/v1/db-admin/query', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({sql: sql, target_db: targetDb})
-    });
-    const data = await res.json();
-    if (!res.ok) {
-        msgEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-octagon me-1"></i>Error SQL: ${data.detail}</span>`;
-        return;
-    }
+    try {
+        const res = await dbAuthFetch('/api/v1/db-admin/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({sql: sql, target_db: targetDb})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            msgEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-octagon me-1"></i>Error SQL: ${data.detail}</span>`;
+            return;
+        }
 
-    msgEl.innerHTML = `<span class="text-emerald-bright fw-bold"><i class="bi bi-check-circle me-1"></i>${data.message}</span>`;
-    if (data.columns && data.rows) {
-        document.getElementById('current-table-title').textContent = `Resultado de Consulta SQL`;
-        document.getElementById('current-table-subtitle').textContent = `${data.rows.length} filas devueltas`;
-        renderTableGrid(data.columns, data.rows, false);
+        msgEl.innerHTML = `<span class="text-emerald-bright fw-bold"><i class="bi bi-check-circle me-1"></i>${data.message}</span>`;
+        if (data.columns && data.rows) {
+            document.getElementById('current-table-title').textContent = `Resultado de Consulta SQL`;
+            document.getElementById('current-table-subtitle').textContent = `${data.rows.length} filas devueltas`;
+            renderTableGrid(data.columns, data.rows, false);
+        }
+        loadTablesList();
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            msgEl.innerHTML = `<span class="text-danger fw-bold">Error de conexión con el servidor SQL.</span>`;
+        }
     }
-    loadTablesList();
 }
 
 async function resetFactoryData() {
     if (!confirm('¿Restaurar todas las tablas SQL, DynamoDB y Redis a los valores iniciales de fábrica?')) {
         return;
     }
-    localStorage.removeItem('tn_profile_cache');
-    await fetch('/api/v1/system/reset-demo', {method: 'POST'});
-    showBanner('Bases de datos restauradas a los valores iniciales de fábrica.');
-    loadTableData(currentTable);
+    try {
+        localStorage.removeItem('tn_profile_cache');
+        localStorage.removeItem('tn_alert_cache');
+        const res = await dbAuthFetch('/api/v1/system/reset-demo', {method: 'POST'});
+        if (res.ok) {
+            showBanner('Bases de datos restauradas a los valores iniciales de fábrica.');
+            loadTableData(currentTable);
+        } else {
+            showBanner('Error al restaurar datos de fábrica.', true);
+        }
+    } catch (e) {
+        if (e.message !== 'NO_TOKEN' && e.message !== 'UNAUTHORIZED') {
+            showBanner('Error de conexión al restaurar datos de fábrica.', true);
+        }
+    }
 }
 </script>
 </body>

@@ -493,7 +493,7 @@
     injectStyles();
     injectAIHUD();
     try {
-      const res = await fetch(`${API_URL}/api/v1/alert-config`);
+      const res = await fetch(`${API_URL}/api/v1/sdk/public-config?retail_id=${encodeURIComponent(RETAIL_ID)}`, { cache: 'no-store' });
       if (res.ok) {
         const cfg = await res.json();
         campaignActive = Boolean(cfg.is_active);

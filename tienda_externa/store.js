@@ -433,9 +433,43 @@ window.addEventListener('technova:conversion', (e) => {
   openCartDrawer();
 });
 
+async function syncCatalogWithBackend() {
+  try {
+    const res = await fetch('/api/v1/store/catalog', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !Array.isArray(data.products)) return;
+    let changed = false;
+    data.products.forEach(remote => {
+      const local = PRODUCTS[remote.sku];
+      if (local) {
+        if (
+          local.stock !== remote.stock ||
+          local.price !== remote.price ||
+          local.name !== remote.name ||
+          local.category !== remote.category
+        ) {
+          local.stock = remote.stock;
+          local.price = remote.price;
+          local.name = remote.name;
+          local.category = remote.category;
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      renderAIRecommendations();
+      renderCatalogGrid();
+    }
+  } catch (e) {
+    // mantener catálogo local
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderAIRecommendations();
   renderCatalogGrid();
+  syncCatalogWithBackend();
 
   document.getElementById('cart-btn').addEventListener('click', openCartDrawer);
   document.getElementById('cart-close-btn').addEventListener('click', closeCartDrawer);

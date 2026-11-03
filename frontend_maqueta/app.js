@@ -1,14 +1,26 @@
 /**
- * RetailTech Analytics - Frontend SPA Router & Comprehensive Controller v2.0
- * Cumple al 100% las 47 Historias de Usuario, 80 Criterios de Aceptación (P20261092_HU-CORREGIDO)
- * y 78 Casos de Prueba (P20261092_CP-CORREGIDO), con persistencia real en Base de Datos.
+ * RetailTech Analytics - Frontend SPA Router & Controller v2.1
+ * Cumple las 47 Historias de Usuario, 80 Criterios de Aceptación (P20261092_HU-CORREGIDO),
+ * 78 Casos de Prueba (P20261092_CP-CORREGIDO) y correcciones de auditoría MantisBT:
+ * 0003185, 0003188, 0003191, 0003193, 0003195, 0003197, 0003201, 0003207.
  */
 const app = (function () {
   'use strict';
 
   const API_URL = window.location.origin;
+  const PUBLIC_ROUTES = ['/', '/login', '/recuperar', '/restablecer'];
+  const RANGE_LABELS = {
+    '7d': 'Últimos 7 días',
+    '30d': 'Últimos 30 días',
+    'mes': 'Mes Actual'
+  };
+
   let currentRoute = '/login';
   let dateRange = '7d';
+  let customDateFilter = null;
+  let panelShellLoaded = false;
+  let panelListenersBound = false;
+  let cachedStoreCatalog = [];
   let broadcastChannel = null;
 
   try {
@@ -25,9 +37,12 @@ const app = (function () {
     toast.textContent = msg;
     toast.style.backgroundColor = isError ? '#dc3545' : '#198754';
     toast.style.display = 'block';
-    setTimeout(() => {
+    if (toast._hideTimer) {
+      clearTimeout(toast._hideTimer);
+    }
+    toast._hideTimer = setTimeout(() => {
       toast.style.display = 'none';
-    }, 4000);
+    }, 4200);
   }
 
   function checkPasswordPolicy(pw) {
@@ -40,7 +55,131 @@ const app = (function () {
   }
 
   // =========================================================================
-  // ENRUTADOR DE VISTAS (SPA)
+  // SEGURIDAD DE SESIÓN, JWT Y MONTAJE PROTEGIDO (MANTIS 0003188, 0003193)
+  // =========================================================================
+  function getToken() {
+    return (sessionStorage.getItem('retail_token') || '').trim();
+  }
+
+  function hasValidSession() {
+    const tok = getToken();
+    if (!tok) return false;
+    const parts = tok.split('.');
+    return parts.length === 3 && parts[0].length > 0 && parts[1].length > 0 && parts[2].length > 0;
+  }
+
+  function purgeSessionAndUnmount() {
+    sessionStorage.removeItem('retail_token');
+    sessionStorage.removeItem('retail_id');
+    try {
+      sessionStorage.clear();
+    } catch (e) {}
+    try {
+      localStorage.removeItem('tn_profile_cache');
+      localStorage.removeItem('tn_alert_cache');
+    } catch (e) {}
+
+    panelShellLoaded = false;
+    panelListenersBound = false;
+    const mount = document.getElementById('protected-app-mount');
+    if (mount) {
+      mount.innerHTML = '';
+    }
+  }
+
+  function showOnlyPublicView(targetId, pageTitle) {
+    const viewLogin = document.getElementById('view-login');
+    const viewRecuperar = document.getElementById('view-recuperar');
+    const viewRestablecer = document.getElementById('view-restablecer');
+    const appLayout = document.getElementById('app-layout');
+
+    if (viewLogin) viewLogin.style.display = targetId === 'view-login' ? 'flex' : 'none';
+    if (viewRecuperar) viewRecuperar.style.display = targetId === 'view-recuperar' ? 'flex' : 'none';
+    if (viewRestablecer) viewRestablecer.style.display = targetId === 'view-restablecer' ? 'flex' : 'none';
+    if (appLayout) appLayout.style.display = 'none';
+    if (pageTitle) document.title = pageTitle;
+  }
+
+  function handleUnauthorizedRedirect(msg) {
+    purgeSessionAndUnmount();
+    currentRoute = '/login';
+    try {
+      window.history.replaceState({ loggedOut: true }, '', '/login');
+    } catch (e) {}
+    showOnlyPublicView('view-login', 'Iniciar Sesión - Retail Tech Analytics');
+    if (msg) {
+      showToast(msg, true);
+    }
+  }
+
+  async function authFetch(url, options = {}) {
+    const token = getToken();
+    if (!token) {
+      handleUnauthorizedRedirect('Acceso restringido: Debe iniciar sesión para realizar esta operación.');
+      return new Response(
+        JSON.stringify({ detail: 'No autenticado: Se requiere iniciar sesión.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const mergedHeaders = Object.assign({}, options.headers || {}, {
+      'Authorization': `Bearer ${token}`
+    });
+    const fetchOpts = Object.assign({ cache: 'no-store' }, options, {
+      headers: mergedHeaders
+    });
+
+    const res = await fetch(url, fetchOpts);
+    if (res.status === 401) {
+      handleUnauthorizedRedirect('Sesión expirada o no autorizada. Por favor inicie sesión nuevamente.');
+    }
+    return res;
+  }
+
+  function bindPanelListeners() {
+    if (panelListenersBound) return;
+    ['alert-input-titulo', 'alert-input-cuerpo', 'alert-input-cta', 'alert-input-color', 'alert-input-discount'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', actualizarPreviewAlertas);
+    });
+
+    const layoutSelect = document.getElementById('alert-input-layout');
+    if (layoutSelect) layoutSelect.addEventListener('change', actualizarPreviewAlertas);
+
+    const activeToggle = document.getElementById('alert-input-active');
+    if (activeToggle) activeToggle.addEventListener('change', actualizarPreviewAlertas);
+
+    panelListenersBound = true;
+  }
+
+  async function ensureProtectedShellMounted() {
+    const mount = document.getElementById('protected-app-mount');
+    if (!mount) return false;
+
+    if (panelShellLoaded && document.getElementById('app-layout')) {
+      return true;
+    }
+
+    try {
+      const res = await authFetch(`${API_URL}/api/v1/auth/panel-shell`);
+      if (!res.ok) {
+        handleUnauthorizedRedirect('Acceso restringido: Debe iniciar sesión para acceder al panel.');
+        return false;
+      }
+      const html = await res.text();
+      mount.innerHTML = html;
+      panelShellLoaded = true;
+      panelListenersBound = false;
+      bindPanelListeners();
+      return true;
+    } catch (e) {
+      handleUnauthorizedRedirect('Error de conexión al verificar la sesión con el servidor.');
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // ENRUTADOR DE VISTAS CON GUARDA DE AUTENTICACIÓN (SPA)
   // =========================================================================
   function toggleMobileMenu() {
     const nav = document.getElementById('main-navbar') || document.querySelector('.navbar');
@@ -54,13 +193,67 @@ const app = (function () {
     if (nav) {
       nav.classList.remove('menu-open');
     }
+
+    const baseRuta = (ruta || '/login').split('?')[0];
+    const isPublic = PUBLIC_ROUTES.includes(baseRuta);
+
+    if (!isPublic && !hasValidSession()) {
+      handleUnauthorizedRedirect('Acceso restringido: Debe iniciar sesión para acceder al panel.');
+      return;
+    }
+
     currentRoute = ruta;
     window.history.pushState({}, '', ruta);
     renderRoute(ruta);
   }
 
-  function renderRoute(rutaFull) {
-    const ruta = rutaFull.split('?')[0];
+  async function renderRoute(rutaFull) {
+    const ruta = (rutaFull || '/login').split('?')[0];
+
+    if (ruta === '/') {
+      if (hasValidSession()) {
+        window.history.replaceState({}, '', '/app/inicio');
+        return renderRoute('/app/inicio');
+      }
+      purgeSessionAndUnmount();
+      showOnlyPublicView('view-login', 'Iniciar Sesión - Retail Tech Analytics');
+      return;
+    }
+
+    if (ruta === '/login') {
+      if (!hasValidSession()) {
+        purgeSessionAndUnmount();
+      }
+      showOnlyPublicView('view-login', 'Iniciar Sesión - Retail Tech Analytics');
+      return;
+    }
+
+    if (ruta === '/recuperar') {
+      if (!hasValidSession()) {
+        purgeSessionAndUnmount();
+      }
+      showOnlyPublicView('view-recuperar', 'Recuperar Contraseña - Retail Tech Analytics');
+      return;
+    }
+
+    if (ruta === '/restablecer') {
+      if (!hasValidSession()) {
+        purgeSessionAndUnmount();
+      }
+      showOnlyPublicView('view-restablecer', 'Restablecer Contraseña - Retail Tech Analytics');
+      verificarTokenRestablecimientoUrl();
+      return;
+    }
+
+    // Guarda estricta para cualquier ruta privada (/app/*)
+    if (!hasValidSession()) {
+      handleUnauthorizedRedirect('Acceso restringido: Inicie sesión para acceder al panel administrativo.');
+      return;
+    }
+
+    const mounted = await ensureProtectedShellMounted();
+    if (!mounted) return;
+
     const viewLogin = document.getElementById('view-login');
     const viewRecuperar = document.getElementById('view-recuperar');
     const viewRestablecer = document.getElementById('view-restablecer');
@@ -81,7 +274,6 @@ const app = (function () {
     if (viewLogin) viewLogin.style.display = 'none';
     if (viewRecuperar) viewRecuperar.style.display = 'none';
     if (viewRestablecer) viewRestablecer.style.display = 'none';
-    if (appLayout) appLayout.style.display = 'none';
     if (subInicio) subInicio.style.display = 'none';
     if (subIaMetrics) subIaMetrics.style.display = 'none';
     if (subAbTest) subAbTest.style.display = 'none';
@@ -90,46 +282,39 @@ const app = (function () {
 
     [navInicio, navIa, navAb, navAlertas, navConfig].forEach(el => el && el.classList.remove('active-link'));
 
-    if (ruta === '/' || ruta === '/login') {
-      if (viewLogin) viewLogin.style.display = 'flex';
-      document.title = 'Iniciar Sesión - Retail Tech Analytics';
-    } else if (ruta === '/recuperar') {
-      if (viewRecuperar) viewRecuperar.style.display = 'flex';
-      document.title = 'Recuperar Contraseña - Retail Tech Analytics';
-    } else if (ruta === '/restablecer') {
-      if (viewRestablecer) viewRestablecer.style.display = 'flex';
-      document.title = 'Restablecer Contraseña - Retail Tech Analytics';
-      verificarTokenRestablecimientoUrl();
-    } else {
-      if (appLayout) appLayout.style.display = 'block';
+    if (appLayout) appLayout.style.display = 'block';
 
-      if (ruta === '/app/ia-metrics') {
-        if (subIaMetrics) subIaMetrics.style.display = 'block';
-        if (navIa) navIa.classList.add('active-link');
-        document.title = 'Métricas IA (GRU + XGBoost) - RetailTech Analytics';
-        cargarMetricasIA();
-      } else if (ruta === '/app/ab-testing') {
-        if (subAbTest) subAbTest.style.display = 'block';
-        if (navAb) navAb.classList.add('active-link');
-        document.title = 'Test A/B - RetailTech Analytics';
-        cargarAbTest(false);
-      } else if (ruta === '/app/alertas') {
-        if (subAlertas) subAlertas.style.display = 'block';
-        if (navAlertas) navAlertas.classList.add('active-link');
-        document.title = 'Alertas Comerciales - RetailTech Analytics';
-        cargarConfigAlertasDesdeBD();
-      } else if (ruta === '/app/configuracion') {
-        if (subConfig) subConfig.style.display = 'block';
-        if (navConfig) navConfig.classList.add('active-link');
-        document.title = 'Configuración y Datos - RetailTech Analytics';
-        cargarPerfilDesdeBD();
+    if (ruta === '/app/ia-metrics') {
+      if (subIaMetrics) subIaMetrics.style.display = 'block';
+      if (navIa) navIa.classList.add('active-link');
+      document.title = 'Métricas IA (GRU + XGBoost) - RetailTech Analytics';
+      cargarMetricasIA();
+    } else if (ruta === '/app/ab-testing') {
+      if (subAbTest) subAbTest.style.display = 'block';
+      if (navAb) navAb.classList.add('active-link');
+      document.title = 'Test A/B - RetailTech Analytics';
+      cargarAbTest(false);
+    } else if (ruta === '/app/alertas') {
+      if (subAlertas) subAlertas.style.display = 'block';
+      if (navAlertas) navAlertas.classList.add('active-link');
+      document.title = 'Alertas Comerciales - RetailTech Analytics';
+      cargarConfigAlertasDesdeBD();
+    } else if (ruta === '/app/configuracion') {
+      if (subConfig) subConfig.style.display = 'block';
+      if (navConfig) navConfig.classList.add('active-link');
+      document.title = 'Configuración y Datos - RetailTech Analytics';
+      cargarPerfilDesdeBD();
+      cargarResumenCatalogoTienda();
+    } else {
+      if (subInicio) subInicio.style.display = 'block';
+      if (navInicio) navInicio.classList.add('active-link');
+      document.title = 'Resumen Analítico - RetailTech Analytics';
+      if (customDateFilter) {
+        cargarKPIs(customDateFilter.start, customDateFilter.end);
       } else {
-        if (subInicio) subInicio.style.display = 'block';
-        if (navInicio) navInicio.classList.add('active-link');
-        document.title = 'Resumen Semanal - RetailTech Analytics';
         cargarKPIs();
-        cargarTelemetria();
       }
+      cargarTelemetria();
     }
   }
 
@@ -137,8 +322,10 @@ const app = (function () {
   // ÉPICA 1: AUTENTICACIÓN, RECUPERACIÓN Y PERFIL (HU0001 - HU0005)
   // =========================================================================
   async function ingresar() {
-    const email = document.getElementById('login-email').value.trim();
-    const pass = document.getElementById('login-password').value;
+    const emailEl = document.getElementById('login-email');
+    const passEl = document.getElementById('login-password');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const pass = passEl ? passEl.value : '';
 
     if (!email || !pass) {
       showToast('Por favor ingrese correo y contraseña.', true);
@@ -153,11 +340,12 @@ const app = (function () {
       });
 
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.token) {
+        sessionStorage.setItem('retail_token', data.token);
+        sessionStorage.setItem('retail_id', data.retail_id || 'RT-001');
+        if (passEl) passEl.value = '';
         // HU0001-1 / CP001: Mensaje exacto requerido
         showToast('¡Bienvenido! Sesión iniciada correctamente.');
-        sessionStorage.setItem('retail_token', data.token);
-        sessionStorage.setItem('retail_id', data.retail_id);
         navegar('/app/inicio');
       } else {
         // HU0001-2 / CP002 y HU0001-3 / CP054
@@ -169,24 +357,32 @@ const app = (function () {
   }
 
   async function salir() {
-    const token = sessionStorage.getItem('retail_token') || '';
-    try {
-      await fetch(`${API_URL}/api/v1/auth/logout`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-    } catch (e) {
-      // ignore offline
+    const token = getToken();
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/v1/auth/logout`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (e) {
+        // continuar limpieza local de sesión aunque el cliente pierda red al salir
+      }
     }
-    sessionStorage.removeItem('retail_token');
-    sessionStorage.removeItem('retail_id');
+
+    purgeSessionAndUnmount();
+    const passEl = document.getElementById('login-password');
+    if (passEl) passEl.value = '';
+
+    currentRoute = '/login';
+    window.history.replaceState({ loggedOut: true }, '', '/login');
+    showOnlyPublicView('view-login', 'Iniciar Sesión - Retail Tech Analytics');
     // HU0002-1 / CP003
     showToast('Sesión cerrada de forma segura.');
-    navegar('/login');
   }
 
   async function resetearPassword() {
-    const email = document.getElementById('recover-email').value.trim();
+    const emailEl = document.getElementById('recover-email');
+    const email = emailEl ? emailEl.value.trim() : '';
     const linkBox = document.getElementById('recover-link-box');
     const linkAnchor = document.getElementById('recover-generated-link');
 
@@ -217,7 +413,7 @@ const app = (function () {
         showToast(data.detail || 'Error al solicitar recuperación.', true);
       }
     } catch (e) {
-      showToast('Error al procesar solicitud de recuperación.', true);
+      showToast('Error de conexión al procesar la solicitud de recuperación.', true);
     }
   }
 
@@ -231,7 +427,9 @@ const app = (function () {
     if (tokenInput) tokenInput.value = token;
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/auth/verify-reset-token?token=${encodeURIComponent(token)}`);
+      const res = await fetch(`${API_URL}/api/v1/auth/verify-reset-token?token=${encodeURIComponent(token)}`, {
+        cache: 'no-store'
+      });
       if (!res.ok) {
         if (expiredBox) expiredBox.style.display = 'block';
         if (formContainer) formContainer.style.display = 'none';
@@ -241,8 +439,7 @@ const app = (function () {
         if (formContainer) formContainer.style.display = 'block';
       }
     } catch (e) {
-      if (expiredBox) expiredBox.style.display = 'none';
-      if (formContainer) formContainer.style.display = 'block';
+      showToast('Error de conexión al verificar la vigencia del enlace.', true);
     }
   }
 
@@ -263,6 +460,11 @@ const app = (function () {
     const token = (document.getElementById('reset-token-input') || {}).value || 'valid_reset_token_2026';
     const newPass = (document.getElementById('reset-new-password') || {}).value || '';
     const confPass = (document.getElementById('reset-confirm-password') || {}).value || '';
+
+    if (!newPass || !confPass) {
+      showToast('Complete la nueva contraseña y su confirmación.', true);
+      return;
+    }
 
     try {
       const res = await fetch(`${API_URL}/api/v1/auth/reset-password`, {
@@ -292,15 +494,19 @@ const app = (function () {
     const compEl = document.getElementById('prof-company');
     const phoneEl = document.getElementById('prof-phone');
     const rucEl = document.getElementById('prof-ruc');
+    const emailEl = document.getElementById('prof-email');
+    const retailEl = document.getElementById('prof-retail-id');
     const keyEl = document.getElementById('api-key-val');
-    if (compEl && data.company_name) compEl.value = data.company_name;
-    if (phoneEl && data.phone) phoneEl.value = data.phone;
-    if (rucEl && data.ruc) rucEl.value = data.ruc;
-    if (keyEl && data.api_key) keyEl.value = data.api_key;
+
+    if (compEl && data.company_name !== undefined) compEl.value = data.company_name;
+    if (phoneEl && data.phone !== undefined) phoneEl.value = data.phone;
+    if (rucEl && data.ruc !== undefined) rucEl.value = data.ruc;
+    if (emailEl && data.email !== undefined) emailEl.value = data.email;
+    if (retailEl && data.retail_id !== undefined) retailEl.value = data.retail_id;
+    if (keyEl && data.api_key !== undefined) keyEl.value = data.api_key;
   }
 
   async function cargarPerfilDesdeBD() {
-    // 1. Pintado instantáneo en 0 ms desde caché local para evitar efecto fantasma al recargar
     try {
       const cached = localStorage.getItem('tn_profile_cache');
       if (cached) {
@@ -308,54 +514,64 @@ const app = (function () {
       }
     } catch (e) {}
 
-    // 2. Sincronización desde Base de Datos
     try {
-      const res = await fetch(`${API_URL}/api/v1/auth/profile`, { cache: 'no-store' });
+      const res = await authFetch(`${API_URL}/api/v1/auth/profile`);
       if (res.ok) {
         const data = await res.json();
         aplicarPerfilEnInputs(data);
         localStorage.setItem('tn_profile_cache', JSON.stringify(data));
+      } else if (res.status !== 401) {
+        showToast('No se pudieron obtener los datos del perfil desde el servidor.', true);
       }
     } catch (e) {
-      // mantener valores actuales
+      showToast('Error de conexión al consultar los datos del perfil.', true);
     }
   }
 
   async function actualizarPerfil() {
-    const company = document.getElementById('prof-company').value.trim();
-    const phone = document.getElementById('prof-phone').value.trim();
+    const compEl = document.getElementById('prof-company');
+    const phoneEl = document.getElementById('prof-phone');
     const rucEl = document.getElementById('prof-ruc');
-    const ruc = rucEl ? rucEl.value.trim() : '20601234567';
+
+    const company = compEl ? compEl.value.trim() : '';
+    const phone = phoneEl ? phoneEl.value.trim() : '';
+    const ruc = rucEl ? rucEl.value.trim() : '';
+
+    if (!company) {
+      showToast('La Razón Social no puede estar vacía.', true);
+      return;
+    }
 
     // HU0004-2 / CP056: Validación estricta de RUC de 11 dígitos numéricos
-    if (ruc && (!/^\d{11}$/.test(ruc))) {
+    if (ruc && !/^\d{11}$/.test(ruc)) {
       showToast('El RUC debe constar exactamente de 11 dígitos numéricos', true);
       return;
     }
 
     try {
-      const token = sessionStorage.getItem('retail_token') || '';
-      const res = await fetch(`${API_URL}/api/v1/auth/profile`, {
+      const res = await authFetch(`${API_URL}/api/v1/auth/profile`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company_name: company, phone: phone, ruc: ruc })
       });
+      if (res.status === 401) return;
       const data = await res.json();
       if (res.ok) {
-        localStorage.setItem('tn_profile_cache', JSON.stringify({
-          company_name: company,
-          phone: phone,
-          ruc: ruc
-        }));
+        try {
+          const prev = JSON.parse(localStorage.getItem('tn_profile_cache') || '{}');
+          localStorage.setItem('tn_profile_cache', JSON.stringify(Object.assign(prev, {
+            company_name: company,
+            phone: phone,
+            ruc: ruc
+          })));
+        } catch (err) {}
         showToast(data.message || 'Datos de perfil y contacto actualizados con éxito');
       } else {
-        showToast(data.detail || 'El RUC debe constar exactamente de 11 dígitos numéricos', true);
+        showToast(data.detail || 'Error al actualizar los datos del perfil.', true);
       }
     } catch (e) {
-      showToast('Datos de perfil y contacto actualizados con éxito');
+      // Mantis 0003195: Prohibido mostrar falso éxito cuando falla la red o el backend
+      showToast('Error de conexión: No se pudieron guardar los cambios del perfil en el servidor.', true);
     }
   }
 
@@ -378,9 +594,12 @@ const app = (function () {
   }
 
   async function cambiarContrasena() {
-    const cur = document.getElementById('pass-current').value;
-    const n = document.getElementById('pass-new').value;
-    const c = document.getElementById('pass-confirm').value;
+    const curEl = document.getElementById('pass-current');
+    const newEl = document.getElementById('pass-new');
+    const confEl = document.getElementById('pass-confirm');
+    const cur = curEl ? curEl.value : '';
+    const n = newEl ? newEl.value : '';
+    const c = confEl ? confEl.value : '';
 
     if (!cur || !n || !c) {
       showToast('Complete todos los campos de contraseña.', true);
@@ -400,32 +619,38 @@ const app = (function () {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/auth/change-password`, {
+      const res = await authFetch(`${API_URL}/api/v1/auth/change-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ current_password: cur, new_password: n, confirm_password: c })
       });
+      if (res.status === 401) return;
       const data = await res.json();
       if (res.ok) {
         showToast(data.message || 'Contraseña de acceso actualizada correctamente');
-        document.getElementById('pass-current').value = '';
-        document.getElementById('pass-new').value = '';
-        document.getElementById('pass-confirm').value = '';
+        if (curEl) curEl.value = '';
+        if (newEl) newEl.value = '';
+        if (confEl) confEl.value = '';
         const ind = document.getElementById('pass-complexity-alert');
         if (ind) ind.style.display = 'none';
       } else {
         showToast(data.detail || 'La contraseña actual ingresada es incorrecta', true);
       }
     } catch (e) {
-      showToast('Error al procesar el cambio de contraseña.', true);
+      showToast('Error de conexión al procesar el cambio de contraseña.', true);
     }
   }
 
   // =========================================================================
-  // ÉPICA 2: INTEGRACIÓN, CATÁLOGO Y CSV (HU0006 - HU0015)
+  // ÉPICA 2: INTEGRACIÓN, CATÁLOGO 72 SKUs Y CSV (HU0006 - HU0015 / MANTIS 0003201)
   // =========================================================================
   function copiarApiKey() {
-    const key = document.getElementById('api-key-val').value;
+    const keyEl = document.getElementById('api-key-val');
+    const key = keyEl ? keyEl.value.trim() : '';
+    if (!key) {
+      showToast('No hay una API Key cargada para copiar.', true);
+      return;
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(key).catch(() => {});
     }
@@ -434,115 +659,281 @@ const app = (function () {
   }
 
   async function refrescarConexion() {
+    const syncEl = document.getElementById('last-sync-timestamp');
     try {
-      const res = await fetch(`${API_URL}/api/v1/health`);
+      const res = await fetch(`${API_URL}/api/v1/health`, { cache: 'no-store' });
       if (res.ok) {
-        const syncEl = document.getElementById('last-sync-timestamp');
         if (syncEl) syncEl.textContent = 'En tiempo real (' + new Date().toLocaleTimeString() + ')';
+        // HU0015-1 / CP019
+        showToast('Conexión sincronizada con éxito');
+      } else {
+        if (syncEl) syncEl.textContent = 'Error HTTP ' + res.status + ' (' + new Date().toLocaleTimeString() + ')';
+        showToast('Error al verificar conexión con los microservicios (HTTP ' + res.status + ').', true);
       }
     } catch (e) {
-      // ignore
+      // Mantis 0003195: Notificar fallo real de conexión
+      if (syncEl) syncEl.textContent = 'Sin conexión (' + new Date().toLocaleTimeString() + ')';
+      showToast('Error de conexión: No se pudo contactar con el servidor de microservicios.', true);
     }
-    // HU0015-1 / CP019
-    showToast('Conexión sincronizada con éxito');
+  }
+
+  async function cargarResumenCatalogoTienda() {
+    const summaryEl = document.getElementById('catalog-sync-summary-text');
+    try {
+      const res = await fetch(`${API_URL}/api/v1/store/catalog`, { cache: 'no-store' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (Array.isArray(data.products) && data.products.length > 0) {
+        cachedStoreCatalog = data.products;
+        if (summaryEl) {
+          const sample = cachedStoreCatalog.slice(0, 4).map(p => `${p.sku} stock ${p.stock}`).join(', ');
+          const rest = Math.max(0, cachedStoreCatalog.length - 4);
+          summaryEl.textContent = `${data.total_items} SKUs en ${data.categories_count} categorías tecnológicas (${sample}${rest > 0 ? ' y ' + rest + ' productos adicionales' : ''}).`;
+        }
+      }
+      return cachedStoreCatalog;
+    } catch (e) {
+      return null;
+    }
   }
 
   async function sincronizarCatalogo() {
-    const prods = [
-      { sku: 'LENOVO-G5', name: 'Laptop Lenovo Gamer i5 13va Gen', price: 4199.00, category: 'Laptops Gamer', stock: 14, ai_recommended: true, match_score: 98 },
-      { sku: 'ASUS-ROG', name: 'Laptop ASUS ROG Strix i7 13va', price: 5899.00, category: 'Laptops Gamer', stock: 8, ai_recommended: false, match_score: 84 },
-      { sku: 'HP-VICTUS', name: 'Laptop HP Victus AMD Ryzen 5', price: 3249.00, category: 'Laptops Gamer', stock: 19, ai_recommended: false, match_score: 79 },
-      { sku: 'MSI-CYBORG', name: 'Laptop MSI Cyborg 15 Intel i5', price: 3899.00, category: 'Laptops Gamer', stock: 11, ai_recommended: true, match_score: 91 }
-    ];
+    const statusEl = document.getElementById('catalog-sync-status');
+    if (statusEl) {
+      statusEl.innerHTML = '<span style="color:#0d6efd;">Consultando catálogo oficial de /tienda-web y sincronizando...</span>';
+    }
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/retail/catalog-sync`, {
+      const storeRes = await fetch(`${API_URL}/api/v1/store/catalog`, { cache: 'no-store' });
+      if (!storeRes.ok) {
+        const msg = 'No se pudo obtener el catálogo de la tienda asociada (HTTP ' + storeRes.status + ').';
+        if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${msg}</span>`;
+        showToast(msg, true);
+        return;
+      }
+
+      const storeData = await storeRes.json();
+      const prods = Array.isArray(storeData.products) ? storeData.products : [];
+      cachedStoreCatalog = prods;
+
+      const retailId = sessionStorage.getItem('retail_id') || 'RT-001';
+      const res = await authFetch(`${API_URL}/api/v1/retail/catalog-sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Retail-ID': 'RT-001'
+          'X-Retail-ID': retailId
         },
         body: JSON.stringify({ products: prods })
       });
+      if (res.status === 401) return;
+
       const data = await res.json();
       if (res.ok) {
-        showToast(data.message || 'Catálogo sincronizado exitosamente con 4 productos.');
+        const okMsg = data.message || `Catálogo sincronizado exitosamente con ${prods.length} productos.`;
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:#198754; font-weight:bold;">${okMsg}</span>`;
+        }
+        await cargarResumenCatalogoTienda();
+        showToast(okMsg);
       } else {
-        showToast(data.detail || 'Error al sincronizar catálogo.', true);
+        const errMsg = data.detail || 'Error de validación al sincronizar el catálogo.';
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${errMsg}</span>`;
+        }
+        showToast(errMsg, true);
       }
     } catch (e) {
-      showToast('Catálogo sincronizado exitosamente con 4 productos.');
+      // Mantis 0003195: Prohibido mostrar éxito falso en error de red
+      const netMsg = 'Error de conexión: No se pudo sincronizar el catálogo con el servidor.';
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${netMsg}</span>`;
+      }
+      showToast(netMsg, true);
+    }
+  }
+
+  async function toggleCatalogJsonEditor() {
+    const box = document.getElementById('catalog-json-editor-box');
+    const ta = document.getElementById('catalog-json-textarea');
+    if (!box) return;
+    const isHidden = box.style.display === 'none' || box.style.display === '';
+    box.style.display = isHidden ? 'block' : 'none';
+    if (isHidden && ta && !ta.value.trim()) {
+      await cargarJsonCatalogoTienda();
+    }
+  }
+
+  async function cargarJsonCatalogoTienda() {
+    const ta = document.getElementById('catalog-json-textarea');
+    if (!ta) return;
+    if (!cachedStoreCatalog || cachedStoreCatalog.length === 0) {
+      await cargarResumenCatalogoTienda();
+    }
+    ta.value = JSON.stringify({ products: cachedStoreCatalog }, null, 2);
+  }
+
+  function cargarJsonIncompletoCP078() {
+    const ta = document.getElementById('catalog-json-textarea');
+    if (!ta) return;
+    // CP078: Payload con campos obligatorios faltantes (sin price ni stock) para probar rechazo HTTP 400
+    ta.value = JSON.stringify({
+      products: [
+        {
+          sku: 'LENOVO-G5',
+          name: 'Laptop Lenovo Gamer i5 13va Gen'
+        }
+      ]
+    }, null, 2);
+  }
+
+  async function enviarCatalogoJsonPersonalizado() {
+    const ta = document.getElementById('catalog-json-textarea');
+    const statusEl = document.getElementById('catalog-sync-status');
+    const rawPayload = ta ? ta.value.trim() : '';
+
+    if (!rawPayload) {
+      showToast('Ingrese un payload JSON antes de enviar.', true);
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.innerHTML = '<span style="color:#0d6efd;">Validando esquema y transmitiendo payload JSON...</span>';
+    }
+
+    try {
+      const retailId = sessionStorage.getItem('retail_id') || 'RT-001';
+      const res = await authFetch(`${API_URL}/api/v1/retail/catalog-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Retail-ID': retailId
+        },
+        body: rawPayload
+      });
+      if (res.status === 401) return;
+
+      const data = await res.json();
+      if (res.ok) {
+        const okMsg = data.message || 'Payload de catálogo procesado correctamente.';
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:#198754; font-weight:bold;">${okMsg}</span>`;
+        }
+        await cargarResumenCatalogoTienda();
+        showToast(okMsg);
+      } else {
+        const errMsg = data.detail || `Error HTTP ${res.status}: Payload rechazado por validación.`;
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">Rechazado (HTTP ${res.status}): ${errMsg}</span>`;
+        }
+        showToast(errMsg, true);
+      }
+    } catch (e) {
+      const netMsg = 'Error de conexión al transmitir el payload JSON al servidor.';
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${netMsg}</span>`;
+      }
+      showToast(netMsg, true);
     }
   }
 
   async function procesarArchivoCsv(event) {
-    const file = event.target.files[0];
+    const file = event && event.target && event.target.files ? event.target.files[0] : null;
     const statusEl = document.getElementById('csv-upload-status');
     if (!file) return;
 
     // HU0009-2 / CP013: Rechazo de archivo con formato no admitido
     if (!file.name.toLowerCase().endsWith('.csv')) {
       const errMsg = 'Error: Solo se admiten archivos en formato .csv';
-      statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${errMsg}</span>`;
+      if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${errMsg}</span>`;
       showToast('Error: Formato no admitido. Solo se admiten archivos en formato .csv', true);
+      event.target.value = '';
       return;
     }
 
-    statusEl.innerHTML = `<span style="color:#0d6efd;">Subiendo y procesando ${file.name}...</span>`;
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:#0d6efd;">Subiendo y procesando ${file.name}...</span>`;
+    }
 
     try {
       const textContent = await file.text();
-      const res = await fetch(`${API_URL}/api/v1/retail/upload-csv?filename=${encodeURIComponent(file.name)}`, {
+      const res = await authFetch(`${API_URL}/api/v1/retail/upload-csv?filename=${encodeURIComponent(file.name)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         body: textContent
       });
-      const data = await res.json();
+      if (res.status === 401) return;
 
+      const data = await res.json();
       if (res.ok) {
-        statusEl.innerHTML = `<span style="color:#198754; font-weight:bold;">Carga completada: ${data.message}</span>`;
-        showToast(data.message || 'Catálogo sincronizado exitosamente con 150 productos.');
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:#198754; font-weight:bold;">Carga completada: ${data.message}</span>`;
+        }
+        await cargarResumenCatalogoTienda();
+        showToast(data.message || 'Archivo CSV procesado exitosamente.');
       } else {
-        statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${data.detail}</span>`;
-        showToast(data.detail, true);
+        const errDetail = data.detail || 'Error de validación en el archivo CSV.';
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${errDetail}</span>`;
+        }
+        showToast(errDetail, true);
       }
     } catch (e) {
-      statusEl.innerHTML = '<span style="color:#198754; font-weight:bold;">Catálogo sincronizado exitosamente con 150 productos.</span>';
-      showToast('Catálogo sincronizado exitosamente con 150 productos.');
+      // Mantis 0003195: Prohibido mostrar falso éxito de 150 productos en caso de fallo de red
+      const netErr = 'Error de conexión: No se pudo procesar el archivo CSV en el servidor.';
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${netErr}</span>`;
+      }
+      showToast(netErr, true);
+    } finally {
+      event.target.value = '';
     }
   }
 
   // =========================================================================
-  // ÉPICA 3: MÉTRICAS IA Y RE-ENTRENAMIENTO (HU0016 - HU0024)
+  // ÉPICA 3: MÉTRICAS IA Y RE-ENTRENAMIENTO (HU0016 - HU0024 / MANTIS 0003185, 0003207)
   // =========================================================================
   async function cargarMetricasIA() {
     try {
-      const res = await fetch(`${API_URL}/api/v1/ml/metrics`);
+      const res = await authFetch(`${API_URL}/api/v1/ml/metrics`);
+      if (res.status === 401) return;
       if (res.ok) {
         const data = await res.json();
-        document.getElementById('ia-metric-f1').textContent = `${data.metrics.f1_score}%`;
-        document.getElementById('ia-metric-recall').textContent = `${data.metrics.recall.toFixed(1)}%`;
-        document.getElementById('ia-metric-precision').textContent = `${data.metrics.precision}%`;
-        document.getElementById('ia-metric-auc').textContent = data.metrics.auc_roc;
-        document.getElementById('ia-metric-latency').textContent = `${data.metrics.avg_latency_ms} ms`;
-        document.getElementById('ia-last-trained').textContent = `Última ejecución: ${data.last_trained}`;
+        const f1El = document.getElementById('ia-metric-f1');
+        const recEl = document.getElementById('ia-metric-recall');
+        const precEl = document.getElementById('ia-metric-precision');
+        const aucEl = document.getElementById('ia-metric-auc');
+        const latEl = document.getElementById('ia-metric-latency');
+        const trEl = document.getElementById('ia-last-trained');
+
+        if (f1El) f1El.textContent = `${Number(data.metrics.f1_score).toFixed(1)}%`;
+        if (recEl) recEl.textContent = `${Number(data.metrics.recall).toFixed(1)}%`;
+        if (precEl) precEl.textContent = `${Number(data.metrics.precision).toFixed(1)}%`;
+        if (aucEl) aucEl.textContent = data.metrics.auc_roc;
+        if (latEl) latEl.textContent = `${data.metrics.avg_latency_ms} ms`;
+        if (trEl) trEl.textContent = `Última ejecución: ${data.last_trained}`;
+      } else {
+        showToast('No se pudieron actualizar las métricas del motor de IA.', true);
       }
     } catch (e) {
-      console.warn('Cargando métricas locales de IA');
+      showToast('Error de conexión al consultar las métricas del motor de IA.', true);
     }
   }
 
   async function dispararReentrenamiento() {
-    showToast('Ejecutando pipeline de re-entrenamiento en Amazon SageMaker (Zero Downtime)...');
+    showToast('Iniciando pipeline de re-entrenamiento en Amazon SageMaker (Zero Downtime)...');
     try {
-      const res = await fetch(`${API_URL}/api/v1/ml/retrain`, { method: 'POST' });
+      const res = await authFetch(`${API_URL}/api/v1/ml/retrain`, { method: 'POST' });
+      if (res.status === 401) return;
       const data = await res.json();
       if (res.ok) {
-        showToast(data.message);
-        cargarMetricasIA();
+        showToast(data.message || 'Pipeline de re-entrenamiento completado con éxito.');
+        await cargarMetricasIA();
+      } else {
+        showToast(data.detail || 'Error al ejecutar el re-entrenamiento del modelo.', true);
       }
     } catch (e) {
-      showToast('Re-entrenamiento finalizado con éxito.');
+      // Mantis 0003195: Prohibido mostrar éxito falso si el servidor falla
+      showToast('Error de conexión: No se pudo ejecutar el pipeline de re-entrenamiento.', true);
     }
   }
 
@@ -575,7 +966,6 @@ const app = (function () {
   }
 
   async function cargarConfigAlertasDesdeBD() {
-    // 1. Pintado instantáneo en 0 ms desde caché local para evitar efecto fantasma al recargar
     try {
       const cached = localStorage.getItem('tn_alert_cache');
       if (cached) {
@@ -584,16 +974,18 @@ const app = (function () {
       }
     } catch (e) {}
 
-    // 2. Sincronización desde Base de Datos
     try {
-      const res = await fetch(`${API_URL}/api/v1/alert-config`, { cache: 'no-store' });
+      const res = await authFetch(`${API_URL}/api/v1/alert-config`);
+      if (res.status === 401) return;
       if (res.ok) {
         const cfg = await res.json();
         aplicarConfigAlertasEnInputs(cfg);
         localStorage.setItem('tn_alert_cache', JSON.stringify(cfg));
+      } else {
+        showToast('No se pudo cargar la configuración de alertas desde el servidor.', true);
       }
     } catch (e) {
-      // usar valores en DOM
+      showToast('Error de conexión al cargar la configuración de alertas.', true);
     }
     actualizarPreviewAlertas();
   }
@@ -607,7 +999,7 @@ const app = (function () {
     const discountInput = document.getElementById('alert-input-discount');
     const activeInput = document.getElementById('alert-input-active');
 
-    if (!tituloInput) return;
+    if (!tituloInput || !cuerpoInput || !ctaInput || !colorInput || !activeInput) return;
 
     const titulo = tituloInput.value;
     const cuerpoRaw = cuerpoInput.value;
@@ -619,7 +1011,7 @@ const app = (function () {
 
     const cuerpoPreview = cuerpoRaw
       .replace(/\{\{user_name\}\}/g, 'Giancarlo')
-      .replace(/\{\{product_name\}\}/g, 'Laptop Lenovo Gamer i5')
+      .replace(/\{\{product_name\}\}/g, 'Laptop Lenovo Gamer i5 13va Gen')
       .replace(/30%/g, `${discount}%`);
 
     document.getElementById('prev-title').textContent = titulo;
@@ -660,41 +1052,49 @@ const app = (function () {
     }
 
     if (isActive) {
-      overlay.style.display = 'flex';
-      badge.textContent = 'Estado: Activa';
-      badge.classList.remove('inactive');
-      toggleLabel.textContent = 'Activa';
+      if (overlay) overlay.style.display = 'flex';
+      if (badge) {
+        badge.textContent = 'Estado: Activa';
+        badge.classList.remove('inactive');
+      }
+      if (toggleLabel) toggleLabel.textContent = 'Activa';
     } else {
-      overlay.style.display = 'none';
-      badge.textContent = 'Estado: Inactiva';
-      badge.classList.add('inactive');
-      toggleLabel.textContent = 'Inactiva';
+      if (overlay) overlay.style.display = 'none';
+      if (badge) {
+        badge.textContent = 'Estado: Inactiva';
+        badge.classList.add('inactive');
+      }
+      if (toggleLabel) toggleLabel.textContent = 'Inactiva';
     }
   }
 
   async function guardarPlantilla() {
-    const dwellVal = parseInt(document.getElementById('alert-input-dwell').value, 10);
-    const interacVal = parseInt(document.getElementById('alert-input-interac').value, 10);
-    const freqVal = parseInt(document.getElementById('alert-input-freq').value, 10);
+    const dwellEl = document.getElementById('alert-input-dwell');
+    const interacEl = document.getElementById('alert-input-interac');
+    const freqEl = document.getElementById('alert-input-freq');
     const discEl = document.getElementById('alert-input-discount');
+
+    const dwellVal = parseInt(dwellEl ? dwellEl.value : '', 10);
+    const interacVal = parseInt(interacEl ? interacEl.value : '', 10);
+    const freqVal = parseInt(freqEl ? freqEl.value : '', 10);
     const discVal = discEl ? parseFloat(discEl.value) : 30.0;
 
     // Validaciones en cliente y servidor (CP068, CP069, CP070)
     if (isNaN(dwellVal) || dwellVal < 5 || dwellVal > 600) {
-      document.getElementById('alert-input-dwell').style.borderColor = '#dc3545';
+      if (dwellEl) dwellEl.style.borderColor = '#dc3545';
       showToast('El tiempo de inactividad debe estar comprendido entre 5 y 600 segundos', true);
       return;
     }
-    document.getElementById('alert-input-dwell').style.borderColor = '';
+    if (dwellEl) dwellEl.style.borderColor = '';
 
     if (isNaN(freqVal) || freqVal < 1) {
-      document.getElementById('alert-input-freq').style.borderColor = '#dc3545';
+      if (freqEl) freqEl.style.borderColor = '#dc3545';
       showToast('La frecuencia mínima debe ser de al menos 1 hora', true);
       return;
     }
-    document.getElementById('alert-input-freq').style.borderColor = '';
+    if (freqEl) freqEl.style.borderColor = '';
 
-    if (!isNaN(discVal) && (discVal < 1 || discVal > 50)) {
+    if (isNaN(discVal) || discVal < 1 || discVal > 50) {
       if (discEl) discEl.style.borderColor = '#dc3545';
       showToast('El descuento excede el límite máximo permitido (50%) para proteger el margen comercial', true);
       return;
@@ -710,64 +1110,197 @@ const app = (function () {
       min_dwell_seconds: dwellVal,
       min_interactions: isNaN(interacVal) ? 2 : interacVal,
       frequency_hours: freqVal,
-      discount_percent: isNaN(discVal) ? 30.0 : discVal,
+      discount_percent: discVal,
       is_active: document.getElementById('alert-input-active').checked
     };
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/alert-config`, {
+      const res = await authFetch(`${API_URL}/api/v1/alert-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      if (res.status === 401) return;
       const data = await res.json();
 
       if (res.ok) {
         actualizarPreviewAlertas();
-        // HU0025-1..HU0031-2 / CP029..CP036
+        localStorage.setItem('tn_alert_cache', JSON.stringify(data.data || payload));
         showToast('Plantilla comercial actualizada exitosamente.');
-        document.getElementById('status-update-time').textContent = 'Justo ahora (' + new Date().toLocaleTimeString() + ')';
-        // Sincronizar en tiempo real con /tienda-web sin recarga manual (HU0031-1, HU0031-2)
-        const syncMsg = { type: 'ALERT_CONFIG_UPDATED', config: data.data, timestamp: Date.now() };
+        const timeEl = document.getElementById('status-update-time');
+        if (timeEl) timeEl.textContent = 'Justo ahora (' + new Date().toLocaleTimeString() + ')';
+
+        // Sincronizar en tiempo real con pestañas abiertas de /tienda-web (HU0031-1, HU0031-2)
+        const syncMsg = {
+          type: 'ALERT_CONFIG_UPDATED',
+          config: {
+            retail_id: (data.data && data.data.retail_id) || 'RT-001',
+            is_active: Boolean(payload.is_active),
+            min_dwell_seconds: payload.min_dwell_seconds
+          },
+          timestamp: Date.now()
+        };
         localStorage.setItem('technova_alert_config_sync', JSON.stringify(syncMsg));
         if (broadcastChannel) broadcastChannel.postMessage(syncMsg);
       } else {
         showToast(data.detail || 'Error de validación en la plantilla comercial.', true);
       }
     } catch (err) {
-      showToast('Plantilla comercial actualizada exitosamente.');
+      // Mantis 0003195: Prohibido mostrar falso éxito cuando falla la petición
+      showToast('Error de conexión: No se pudieron guardar los cambios en la plantilla comercial.', true);
     }
   }
 
   // =========================================================================
-  // ÉPICA 6: DASHBOARD, RANGOS DE FECHA, PDF Y TEST A/B (HU0040 - HU0047)
+  // ÉPICA 6: DASHBOARD DINÁMICO, FECHAS, PDF Y TEST A/B (MANTIS 0003191, 0003185)
   // =========================================================================
+  function renderDynamicCharts(data) {
+    // 1. Gráfico SVG de líneas (Tendencia de Conversión y Reducción de Abandono)
+    if (data.weekly_trend) {
+      const days = Array.isArray(data.weekly_trend.days) ? data.weekly_trend.days : [];
+      const convSeries = Array.isArray(data.weekly_trend.conversion_series) ? data.weekly_trend.conversion_series : [];
+      const abanSeries = Array.isArray(data.weekly_trend.abandonment_reduction_series) ? data.weekly_trend.abandonment_reduction_series : [];
+
+      const convGroup = document.getElementById('svg-conv-group');
+      const abanGroup = document.getElementById('svg-aban-group');
+      const daysGroup = document.getElementById('svg-days-group');
+      const xCoords = [0, 80, 160, 240, 320, 400, 480];
+
+      const mapPctToY = (val) => {
+        const clamped = Math.max(0, Math.min(50, Number(val) || 0));
+        return Math.round(168 - (clamped / 50) * 130);
+      };
+
+      if (convGroup && convSeries.length > 0) {
+        const pts = convSeries.slice(0, 7).map((v, idx) => `${xCoords[idx]},${mapPctToY(v)}`);
+        const circles = convSeries.slice(0, 7).map((v, idx) => {
+          const cx = xCoords[idx];
+          const cy = mapPctToY(v);
+          const lbl = days[idx] || '';
+          return `<circle cx="${cx}" cy="${cy}" r="4.5" fill="#0d6efd"><title>${lbl}: ${v}%</title></circle>`;
+        }).join('');
+        convGroup.innerHTML = `<polyline fill="none" stroke="#0d6efd" stroke-width="2.5" points="${pts.join(' ')}"></polyline>${circles}`;
+      }
+
+      if (abanGroup && abanSeries.length > 0) {
+        const pts = abanSeries.slice(0, 7).map((v, idx) => `${xCoords[idx]},${mapPctToY(v)}`);
+        const circles = abanSeries.slice(0, 7).map((v, idx) => {
+          const cx = xCoords[idx];
+          const cy = mapPctToY(v);
+          const lbl = days[idx] || '';
+          return `<circle cx="${cx}" cy="${cy}" r="4.5" fill="#198754"><title>${lbl}: ${v}%</title></circle>`;
+        }).join('');
+        abanGroup.innerHTML = `<polyline fill="none" stroke="#198754" stroke-width="2.5" points="${pts.join(' ')}"></polyline>${circles}`;
+      }
+
+      if (daysGroup && days.length > 0) {
+        daysGroup.innerHTML = days.slice(0, 7).map((d, idx) => (
+          `<text x="${xCoords[idx]}" y="190" font-size="12" fill="#6c757d" font-family="sans-serif" text-anchor="middle">${d}</text>`
+        )).join('');
+      }
+    }
+
+    // 2. Gráfico Donut (Distribución de Resultados de Sesión)
+    if (data.session_distribution) {
+      const dist = data.session_distribution;
+      const cPct = Number(dist['Conversión lograda'] ?? 45);
+      const aPct = Number(dist['Abandono probable'] ?? 30);
+      const rPct = Number(dist['Oferta recuperada'] ?? Math.max(0, 100 - cPct - aPct));
+
+      const donutEl = document.getElementById('kpi-donut-chart');
+      const legConv = document.getElementById('donut-leg-conv');
+      const legAban = document.getElementById('donut-leg-aban');
+      const legRec = document.getElementById('donut-leg-rec');
+
+      if (donutEl) {
+        const stop1 = Math.max(0, Math.min(100, cPct));
+        const stop2 = Math.max(stop1, Math.min(100, cPct + aPct));
+        donutEl.style.background = `conic-gradient(#198754 0% ${stop1}%, #dc3545 ${stop1}% ${stop2}%, #ffc107 ${stop2}% 100%)`;
+      }
+      if (legConv) legConv.textContent = `Conversión lograda (${cPct}%)`;
+      if (legAban) legAban.textContent = `Abandono probable (${aPct}%)`;
+      if (legRec) legRec.textContent = `Oferta recuperada (${rPct}%)`;
+    }
+
+    // 3. Gráfico de Barras por Segmento de Cliente
+    if (data.segment_conversion) {
+      const seg = data.segment_conversion;
+      const applySeg = (obj, convId, abanId) => {
+        if (!obj) return;
+        const c = Number(obj.conversion ?? 50);
+        const a = Number(obj.abandono ?? (100 - c));
+        const cEl = document.getElementById(convId);
+        const aEl = document.getElementById(abanId);
+        if (cEl) {
+          cEl.style.width = `${c}%`;
+          cEl.textContent = `${c}%`;
+        }
+        if (aEl) {
+          aEl.style.width = `${a}%`;
+          aEl.textContent = `${a}%`;
+        }
+      };
+
+      applySeg(seg['Cliente Recurrente'], 'seg-rec-conv', 'seg-rec-aban');
+      applySeg(seg['Cliente Nuevo'], 'seg-new-conv', 'seg-new-aban');
+      applySeg(seg['Anónimo'], 'seg-ano-conv', 'seg-ano-aban');
+    }
+  }
+
   async function cargarKPIs(startDate = null, endDate = null) {
     try {
       let url = `${API_URL}/api/v1/kpi/daily?rango=${encodeURIComponent(dateRange)}`;
-      if (startDate && endDate) {
-        url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+      if (startDate !== null || endDate !== null) {
+        url += `&start_date=${encodeURIComponent(startDate || '')}&end_date=${encodeURIComponent(endDate || '')}`;
       }
-      const res = await fetch(url);
+
+      const res = await authFetch(url);
+      if (res.status === 401) return false;
       const data = await res.json();
+
       if (res.ok) {
-        document.getElementById('kpi-conversion').textContent = data.tasa_conversion;
-        document.getElementById('kpi-abandono').textContent = data.reduccion_abandono;
-        document.getElementById('kpi-secciones').textContent = data.secciones_optimizadas;
-        document.getElementById('kpi-ingresos').textContent = data.ingresos_recuperados;
+        const convEl = document.getElementById('kpi-conversion');
+        const abanEl = document.getElementById('kpi-abandono');
+        const secEl = document.getElementById('kpi-secciones');
+        const ingEl = document.getElementById('kpi-ingresos');
+
+        if (convEl) convEl.textContent = data.tasa_conversion;
+        if (abanEl) abanEl.textContent = data.reduccion_abandono;
+        if (secEl) secEl.textContent = data.secciones_optimizadas;
+        if (ingEl) ingEl.textContent = data.ingresos_recuperados;
+
+        // Actualizar fechas reales en inputs personalizados y etiqueta activa (Mantis 0003191)
+        const startInput = document.getElementById('custom-start-date');
+        const endInput = document.getElementById('custom-end-date');
+        if (startInput && data.start_date) startInput.value = data.start_date;
+        if (endInput && data.end_date) endInput.value = data.end_date;
+
+        const lblEl = document.getElementById('current-date-range-label');
+        if (lblEl && data.start_date && data.end_date) {
+          if (startDate && endDate) {
+            lblEl.textContent = `${data.start_date} a ${data.end_date}`;
+          } else {
+            const baseTitle = RANGE_LABELS[dateRange] || 'Últimos 7 días';
+            lblEl.textContent = `${baseTitle} (${data.start_date} a ${data.end_date})`;
+          }
+        }
+
+        renderDynamicCharts(data);
         return true;
       } else {
         showToast(data.detail || 'Rango de fechas inválido.', true);
         return false;
       }
     } catch (e) {
+      showToast('Error de conexión al consultar los indicadores del dashboard.', true);
       return false;
     }
   }
 
   async function cargarAbTest(lowSample = false) {
     try {
-      const res = await fetch(`${API_URL}/api/v1/experiment/ab-test?low_sample=${lowSample}`);
+      const res = await authFetch(`${API_URL}/api/v1/experiment/ab-test?low_sample=${lowSample}`);
+      if (res.status === 401) return;
       if (res.ok) {
         const data = await res.json();
         const badgeSig = document.getElementById('ab-significance-badge');
@@ -787,9 +1320,11 @@ const app = (function () {
           }
           if (warnBox) warnBox.style.display = 'none';
         }
+      } else {
+        showToast('No se pudieron cargar los resultados del experimento A/B.', true);
       }
     } catch (e) {
-      // ignore
+      showToast('Error de conexión al consultar los datos del Test A/B.', true);
     }
   }
 
@@ -798,10 +1333,11 @@ const app = (function () {
     if (!tbody) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/telemetry/recent`);
+      const res = await authFetch(`${API_URL}/api/v1/telemetry/recent`);
+      if (res.status === 401) return;
       if (res.ok) {
         const events = await res.json();
-        if (events.length === 0) {
+        if (!Array.isArray(events) || events.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">Esperando eventos de la tienda externa...</td></tr>';
           return;
         }
@@ -816,46 +1352,62 @@ const app = (function () {
             <td><small style="color:#6c757d;">${new Date(e.SK_Timestamp).toLocaleTimeString()}</small></td>
           </tr>
         `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc3545;">No se pudo obtener la telemetría reciente del servidor.</td></tr>';
       }
     } catch (e) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Esperando actividad del servidor...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc3545;">Error de conexión con el servicio de telemetría.</td></tr>';
     }
   }
 
   function toggleDateDropdown() {
     const menu = document.getElementById('date-dropdown-menu');
+    if (!menu) return;
     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
   }
 
-  function seleccionarRangoFechas(rango, etiqueta) {
+  async function seleccionarRangoFechas(rango, etiqueta) {
     dateRange = rango;
-    document.getElementById('current-date-range-label').textContent = etiqueta;
-    document.getElementById('date-dropdown-menu').style.display = 'none';
-    cargarKPIs();
-    showToast(`Rango filtrado a: ${etiqueta}`);
+    customDateFilter = null;
+    const menu = document.getElementById('date-dropdown-menu');
+    if (menu) menu.style.display = 'none';
+
+    const ok = await cargarKPIs();
+    if (ok) {
+      showToast(`Rango filtrado a: ${etiqueta}`);
+    }
   }
 
   async function aplicarFiltroFechasPersonalizado() {
     const startInput = document.getElementById('custom-start-date');
     const endInput = document.getElementById('custom-end-date');
     if (!startInput || !endInput) return;
-    const s = startInput.value;
-    const e = endInput.value;
+
+    const s = startInput.value.trim();
+    const e = endInput.value.trim();
     if (!s || !e) {
-      showToast('Seleccione fecha de inicio y fecha fin.', true);
+      showToast('Seleccione fecha de inicio y fecha fin en formato YYYY-MM-DD.', true);
       return;
     }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) {
+      showToast('Formato de fecha inválido. Utilice YYYY-MM-DD.', true);
+      return;
+    }
+
     // HU0044-2 / CP073: Rechazo de rango temporal invertido
     if (s > e) {
       showToast('Error: La fecha de inicio no puede ser posterior a la fecha final.', true);
       return;
     }
+
+    dateRange = 'custom';
     const ok = await cargarKPIs(s, e);
     if (ok) {
-      const label = `${s} - ${e}`;
-      document.getElementById('current-date-range-label').textContent = label;
-      document.getElementById('date-dropdown-menu').style.display = 'none';
-      showToast(`Rango filtrado a: ${label}`);
+      customDateFilter = { start: s, end: e };
+      const menu = document.getElementById('date-dropdown-menu');
+      if (menu) menu.style.display = 'none';
+      showToast(`Rango filtrado a: ${s} a ${e}`);
     }
   }
 
@@ -869,12 +1421,20 @@ const app = (function () {
       .replace(/\)/g, '\\)');
   }
 
-  function exportarReportePDF() {
-    // HU0045-1 / CP050: Mostrar mensaje y descargar archivo 'Reporte_Metricas_Retail.pdf'
-    showToast('Preparando vista de impresión del Reporte Ejecutivo...');
+  async function exportarReportePDF() {
+    showToast('Generando Reporte Ejecutivo PDF...');
 
-    // Registrar llamada de auditoría al endpoint backend sin caché
-    fetch(`${API_URL}/api/v1/kpi/export-pdf?t=${Date.now()}`, { cache: 'no-store' }).catch(() => {});
+    try {
+      const res = await authFetch(`${API_URL}/api/v1/kpi/export-pdf?t=${Date.now()}`);
+      if (res.status === 401) return;
+      if (!res.ok) {
+        showToast('Error al generar el reporte PDF en el servidor.', true);
+        return;
+      }
+    } catch (e) {
+      showToast('Error de conexión: No se pudo generar el reporte PDF.', true);
+      return;
+    }
 
     let companyName = 'TechNova Retail S.A.C.';
     let rucVal = '20601234567';
@@ -894,6 +1454,9 @@ const app = (function () {
     const seccVal = (document.getElementById('kpi-secciones') || {}).textContent || '42';
     const ingrVal = (document.getElementById('kpi-ingresos') || {}).textContent || 'S/ 18,450.00';
     const rangoVal = (document.getElementById('current-date-range-label') || {}).textContent || 'Ultimos 7 dias';
+    const f1Val = (document.getElementById('ia-metric-f1') || {}).textContent || '88.4%';
+    const recallVal = (document.getElementById('ia-metric-recall') || {}).textContent || '86.2%';
+    const precVal = (document.getElementById('ia-metric-precision') || {}).textContent || '90.7%';
     const fechaGen = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
     const streamLines = [
@@ -911,14 +1474,14 @@ const app = (function () {
       '0 -18 Td (- Secciones Optimizadas Activas: ' + escapePdfText(seccVal) + ' categorias monitoreadas) Tj',
       '0 -18 Td (- Ingresos Recuperados Acumulados: ' + escapePdfText(ingrVal) + ') Tj',
       '/F2 12 Tf 0.05 0.43 0.99 rg 0 -30 Td (2. METRICAS TECNICAS DEL MOTOR HIBRIDO IA \\(GRU + XGBOOST\\)) Tj',
-      '/F1 11 Tf 0.1 0.1 0.1 rg 0 -22 Td (- F1-Score Ponderado: 88.4% \\(Meta ABET > 80% Cumplida\\)) Tj',
-      '0 -18 Td (- Sensibilidad / Recall: 85.0% | Precision Tabular: 90.7%) Tj',
+      '/F1 11 Tf 0.1 0.1 0.1 rg 0 -22 Td (- F1-Score Ponderado: ' + escapePdfText(f1Val) + ' \\(Meta ABET > 80% Cumplida\\)) Tj',
+      '0 -18 Td (- Sensibilidad / Recall: ' + escapePdfText(recallVal) + ' | Precision Tabular: ' + escapePdfText(precVal) + ') Tj',
       '0 -18 Td (- Area Bajo la Curva \\(AUC-ROC\\): 0.92 | Latencia Promedio: 18.4 ms \\(< 40 ms\\)) Tj',
       '/F2 12 Tf 0.05 0.43 0.99 rg 0 -30 Td (3. RESULTADOS DE EXPERIMENTACION TEST A/B \\(DIVISION 50/50\\)) Tj',
       '/F1 11 Tf 0.1 0.1 0.1 rg 0 -22 Td (- Variante A \\(Control Sin IA\\): 14.2% conversion | S/ 5,800.00 recuperados) Tj',
       '0 -18 Td (- Variante B \\(TechNova Motor IA\\): ' + escapePdfText(convVal) + ' conversion | ' + escapePdfText(ingrVal) + ' recuperados) Tj',
       '0 -18 Td (- Significancia Estadistica: p-value = 0.002 \\(Confianza del 99.8% - Ganador Variante B\\)) Tj',
-      '/F1 9 Tf 0.4 0.4 0.4 rg 0 -45 Td (Documento generado por TechNova AI Commercial Offer Engine v2.0 - Cumplimiento Ley N 29733.) Tj',
+      '/F1 9 Tf 0.4 0.4 0.4 rg 0 -45 Td (Documento generado por TechNova AI Commercial Offer Engine v2.1 - Cumplimiento Ley N 29733.) Tj',
       'ET'
     ];
 
@@ -960,25 +1523,21 @@ const app = (function () {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    showToast('Reporte_Metricas_Retail.pdf descargado exitosamente.');
   }
 
   // =========================================================================
-  // LISTENERS E INICIALIZACIÓN
+  // LISTENERS GLOBALES Y BLOQUEO DE CACHÉ HISTÓRICO (MANTIS 0003193)
   // =========================================================================
-  function initListeners() {
-    ['alert-input-titulo', 'alert-input-cuerpo', 'alert-input-cta', 'alert-input-color', 'alert-input-discount'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('input', actualizarPreviewAlertas);
-    });
-
-    const layoutSelect = document.getElementById('alert-input-layout');
-    if (layoutSelect) layoutSelect.addEventListener('change', actualizarPreviewAlertas);
-
-    const activeToggle = document.getElementById('alert-input-active');
-    if (activeToggle) activeToggle.addEventListener('change', actualizarPreviewAlertas);
-
+  function initGlobalListeners() {
     window.addEventListener('popstate', () => {
       renderRoute(window.location.pathname + window.location.search);
+    });
+
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted || !hasValidSession()) {
+        renderRoute(window.location.pathname + window.location.search);
+      }
     });
 
     document.addEventListener('click', (e) => {
@@ -991,9 +1550,19 @@ const app = (function () {
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    initListeners();
+    initGlobalListeners();
     const initialPath = window.location.pathname;
-    const validRoutes = ['/app/inicio', '/app/ia-metrics', '/app/ab-testing', '/app/configuracion', '/app/alertas', '/recuperar', '/restablecer', '/login'];
+    const validRoutes = [
+      '/',
+      '/login',
+      '/recuperar',
+      '/restablecer',
+      '/app/inicio',
+      '/app/ia-metrics',
+      '/app/ab-testing',
+      '/app/configuracion',
+      '/app/alertas'
+    ];
     if (validRoutes.includes(initialPath)) {
       renderRoute(initialPath + window.location.search);
     } else {
@@ -1017,6 +1586,10 @@ const app = (function () {
     copiarApiKey: copiarApiKey,
     refrescarConexion: refrescarConexion,
     sincronizarCatalogo: sincronizarCatalogo,
+    toggleCatalogJsonEditor: toggleCatalogJsonEditor,
+    cargarJsonCatalogoTienda: cargarJsonCatalogoTienda,
+    cargarJsonIncompletoCP078: cargarJsonIncompletoCP078,
+    enviarCatalogoJsonPersonalizado: enviarCatalogoJsonPersonalizado,
     procesarArchivoCsv: procesarArchivoCsv,
     dispararReentrenamiento: dispararReentrenamiento,
     guardarPlantilla: guardarPlantilla,
