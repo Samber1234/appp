@@ -68,7 +68,7 @@ init_databases(reset_to_defaults=False)
 # Mantis 0003197: Deshabilitar exposición pública de /docs, /redoc y /openapi.json
 app = FastAPI(
     title="TechNova Retail - AI Commercial Offer Engine API",
-    description="API RESTful con persistencia políglota conforme a P20261092_HU-CORREGIDO y P20261092_CP-CORREGIDO.",
+    description="API RESTful con persistencia políglota.",
     version="2.0.0",
     docs_url=None,
     redoc_url=None,
