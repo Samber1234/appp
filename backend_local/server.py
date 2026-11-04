@@ -109,7 +109,7 @@ async def serverless_db_sync_middleware(request: Request, call_next):
         if new_token:
             response.set_cookie("tn_db_sync", new_token, max_age=31536000, path="/", samesite="lax")
     elif (request.method in ("POST", "PUT", "PATCH", "DELETE") and response.status_code < 400) or (
-        req_path in ("/api/v1/telemetry/recent", "/api/v1/kpi/daily") and response.status_code == 200
+        req_path in ("/api/v1/telemetry/recent", "/api/v1/kpi/daily", "/api/v1/store/catalog") and response.status_code == 200
     ):
         if request.method in ("POST", "PUT", "PATCH", "DELETE"):
             mark_local_write_ts()
@@ -1001,19 +1001,35 @@ def get_recommendations(request: Request):
 
 
 @app.get("/api/v1/store/catalog")
-def get_store_canonical_catalog():
-    """Mantis 0003201: Fuente única de verdad con los 72 productos exactos de /tienda-web."""
+def get_store_canonical_catalog(canonical: bool = False):
+    """Mantis 0003201: Fuente única de verdad con el catálogo sincronizado entre /tienda-web y PRODUCT_CATALOG."""
+    canonical_list = load_canonical_store_catalog()
+    if canonical:
+        return {
+            "retail_id": "RT-001",
+            "total_items": len(canonical_list),
+            "categories_count": len({p.get("category", "Laptops & Ultrabooks") for p in canonical_list}),
+            "products": canonical_list,
+        }
+
     conn = get_relational_connection()
     rows = conn.execute("SELECT sku, name, category, price, stock, ai_recommended, match_score FROM PRODUCT_CATALOG;").fetchall()
     conn.close()
-    canonical = load_canonical_store_catalog()
-    db_map = {r["sku"]: dict(r) for r in rows}
+    if not rows:
+        return {
+            "retail_id": "RT-001",
+            "total_items": len(canonical_list),
+            "categories_count": len({p.get("category", "Laptops & Ultrabooks") for p in canonical_list}),
+            "products": canonical_list,
+        }
+
+    db_map = {str(r["sku"]).strip().upper(): dict(r) for r in rows}
     merged = []
     seen = set()
-    for item in canonical:
+    for item in canonical_list:
         sku = str(item["sku"]).strip().upper()
-        seen.add(sku)
         if sku in db_map:
+            seen.add(sku)
             r = db_map[sku]
             merged.append({
                 "sku": sku,
@@ -1023,16 +1039,6 @@ def get_store_canonical_catalog():
                 "stock": int(r["stock"]),
                 "ai_recommended": bool(r["ai_recommended"]),
                 "match_score": int(r["match_score"]),
-            })
-        else:
-            merged.append({
-                "sku": sku,
-                "name": item["name"],
-                "category": item.get("category", "Laptops & Ultrabooks"),
-                "price": float(item["price"]),
-                "stock": int(item["stock"]),
-                "ai_recommended": bool(item.get("ai_recommended", False)),
-                "match_score": int(item.get("match_score", 88)),
             })
     for sku, r in db_map.items():
         if sku not in seen and sku != "LAP-ASUS-G16":
@@ -1109,7 +1115,18 @@ async def _process_catalog_sync(request: Request):
             "updated_at": now_peru().isoformat()
         })
 
+    replace_mode = (
+        request.query_params.get("replace") == "true"
+        or (isinstance(body, dict) and bool(body.get("replace")))
+        or len(validated_products) >= 10
+    )
+
     conn = get_relational_connection()
+    if replace_mode:
+        keep_skus = [p["sku"] for p in validated_products]
+        placeholders = ", ".join(["?"] * len(keep_skus))
+        conn.execute(f"DELETE FROM PRODUCT_CATALOG WHERE sku NOT IN ({placeholders});", keep_skus)
+
     for p in validated_products:
         conn.execute("""
         INSERT INTO PRODUCT_CATALOG (sku, retail_id, name, price, category, stock, ai_recommended, match_score, updated_at)

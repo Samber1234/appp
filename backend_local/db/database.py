@@ -836,9 +836,25 @@ def export_compact_db_state() -> str:
                 ).fetchall()
             ]
 
+            canonical_skus = {str(p["sku"]).strip().upper() for p in load_canonical_store_catalog()}
+            all_db_rows = [dict(r) for r in conn.execute("SELECT * FROM PRODUCT_CATALOG;").fetchall()]
+            all_db_skus = [str(r["sku"]).strip().upper() for r in all_db_rows]
+            custom_skus = [s for s in all_db_skus if s not in canonical_skus]
+            deleted_skus = [s for s in canonical_skus if s not in set(all_db_skus)]
+            custom_rows = [r for r in all_db_rows if str(r["sku"]).strip().upper() not in canonical_skus]
+            if custom_rows:
+                existing_cat = tables_map.get("PRODUCT_CATALOG", [])
+                seen_cat = {str(r["sku"]).strip().upper() for r in custom_rows}
+                merged_cat = custom_rows[:6] + [
+                    r for r in existing_cat if str(r["sku"]).strip().upper() not in seen_cat
+                ]
+                tables_map["PRODUCT_CATALOG"] = merged_cat[:6]
+
             snapshot: Dict[str, Any] = {
                 "ts": _worker_state_ts,
                 "reset_ts": _last_reset_ts,
+                "custom_skus": custom_skus[:10],
+                "deleted_skus": deleted_skus[:20],
                 "tables": tables_map,
                 "dynamo_events": dynamo_rows,
             }
@@ -929,6 +945,14 @@ def import_compact_db_state(token_str: str):
 
             # 2. Fusionar tablas relacionales comparando updated_at por fila para jamás sobrescribir cambios más recientes
             tables_data = snapshot.get("tables", {})
+            canonical_items = load_canonical_store_catalog()
+            canonical_skus = {str(p["sku"]).strip().upper() for p in canonical_items}
+            raw_custom = snapshot.get("custom_skus") if isinstance(snapshot.get("custom_skus"), list) else []
+            raw_deleted = snapshot.get("deleted_skus") if isinstance(snapshot.get("deleted_skus"), list) else []
+            custom_sku_set = {str(s).strip().upper() for s in raw_custom if s}
+            deleted_sku_set = {str(s).strip().upper() for s in raw_deleted if s}
+            allowed_catalog_skus = (canonical_skus - deleted_sku_set).union(custom_sku_set)
+
             conn = get_relational_connection()
             try:
                 existing_tables = {
@@ -952,6 +976,10 @@ def import_compact_db_state(token_str: str):
                     for row in rows:
                         if not isinstance(row, dict) or not row:
                             continue
+                        if tname == "PRODUCT_CATALOG":
+                            row_sku = str(row.get("sku") or "").strip().upper()
+                            if not row_sku or row_sku not in allowed_catalog_skus:
+                                continue
                         if pk_col and pk_col in row and "updated_at" in row:
                             local_row = conn.execute(
                                 f"SELECT updated_at FROM {tname} WHERE {pk_col} = ? LIMIT 1;",
@@ -965,6 +993,40 @@ def import_compact_db_state(token_str: str):
                         col_names = ", ".join(cols)
                         vals = [row[c] for c in cols]
                         conn.execute(f"INSERT OR REPLACE INTO {tname} ({col_names}) VALUES ({placeholders});", vals)
+
+                # Sincronizar eliminaciones de SKUs personalizados o dados de baja en PRODUCT_CATALOG
+                if "PRODUCT_CATALOG" in existing_tables and allowed_catalog_skus:
+                    current_db_skus = [
+                        str(r["sku"]).strip().upper()
+                        for r in conn.execute("SELECT sku FROM PRODUCT_CATALOG;").fetchall()
+                    ]
+                    for db_sku in current_db_skus:
+                        if db_sku not in allowed_catalog_skus:
+                            conn.execute("DELETE FROM PRODUCT_CATALOG WHERE sku = ?;", (db_sku,))
+                    existing_after_del = {
+                        str(r["sku"]).strip().upper()
+                        for r in conn.execute("SELECT sku FROM PRODUCT_CATALOG;").fetchall()
+                    }
+                    now_str = now_peru().isoformat()
+                    for c_item in canonical_items:
+                        c_sku = str(c_item["sku"]).strip().upper()
+                        if c_sku in allowed_catalog_skus and c_sku not in existing_after_del:
+                            conn.execute(
+                                """
+                                INSERT OR IGNORE INTO PRODUCT_CATALOG (sku, retail_id, name, price, category, stock, ai_recommended, match_score, updated_at)
+                                VALUES (?, 'RT-001', ?, ?, ?, ?, ?, ?, ?);
+                                """,
+                                (
+                                    c_sku,
+                                    str(c_item["name"]).strip(),
+                                    float(c_item["price"]),
+                                    str(c_item.get("category", "Laptops & Ultrabooks")).strip(),
+                                    int(c_item["stock"]),
+                                    1 if c_item.get("ai_recommended") else 0,
+                                    int(c_item.get("match_score", 88)),
+                                    now_str,
+                                ),
+                            )
                 conn.commit()
                 if incoming_ts > _worker_state_ts:
                     _worker_state_ts = incoming_ts

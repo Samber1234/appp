@@ -704,7 +704,7 @@ const app = (function () {
     }
 
     try {
-      const storeRes = await fetch(`${API_URL}/api/v1/store/catalog`, { cache: 'no-store' });
+      const storeRes = await fetch(`${API_URL}/api/v1/store/catalog?canonical=true`, { cache: 'no-store' });
       if (!storeRes.ok) {
         const msg = 'No se pudo obtener el catálogo de la tienda asociada (HTTP ' + storeRes.status + ').';
         if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545; font-weight:bold;">${msg}</span>`;
@@ -717,7 +717,7 @@ const app = (function () {
       cachedStoreCatalog = prods;
 
       const retailId = sessionStorage.getItem('retail_id') || 'RT-001';
-      const res = await authFetch(`${API_URL}/api/v1/retail/catalog-sync`, {
+      const res = await authFetch(`${API_URL}/api/v1/retail/catalog-sync?replace=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -732,6 +732,10 @@ const app = (function () {
         const okMsg = data.message || `Catálogo sincronizado exitosamente con ${prods.length} productos.`;
         if (statusEl) {
           statusEl.innerHTML = `<span style="color:#198754; font-weight:bold;">${okMsg}</span>`;
+        }
+        const ta = document.getElementById('catalog-json-textarea');
+        if (ta && ta.value.trim()) {
+          ta.value = JSON.stringify({ products: prods }, null, 2);
         }
         await cargarResumenCatalogoTienda();
         showToast(okMsg);
@@ -766,6 +770,16 @@ const app = (function () {
   async function cargarJsonCatalogoTienda() {
     const ta = document.getElementById('catalog-json-textarea');
     if (!ta) return;
+    try {
+      const res = await fetch(`${API_URL}/api/v1/store/catalog?canonical=true`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.products) && data.products.length > 0) {
+          ta.value = JSON.stringify({ products: data.products }, null, 2);
+          return;
+        }
+      }
+    } catch (e) {}
     if (!cachedStoreCatalog || cachedStoreCatalog.length === 0) {
       await cargarResumenCatalogoTienda();
     }
@@ -802,7 +816,7 @@ const app = (function () {
 
     try {
       const retailId = sessionStorage.getItem('retail_id') || 'RT-001';
-      const res = await authFetch(`${API_URL}/api/v1/retail/catalog-sync`, {
+      const res = await authFetch(`${API_URL}/api/v1/retail/catalog-sync?replace=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
