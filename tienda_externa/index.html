@@ -38,6 +38,9 @@
   <!-- Contenido Principal -->
   <main class="main-container">
 
+    <!-- Slot dedicado en flujo normal para el HUD del Motor Híbrido IA (0003333: evita superposición con tarjetas) -->
+    <div id="technova-hud-slot" style="margin-bottom: 18px;"></div>
+
     <!-- Bloque de Recomendación Dinámica del Motor IA (HU0038, HU0039 / CP043, CP044) -->
     <div class="recommendations-section" style="margin-bottom: 32px; padding: 24px; background: white; border-radius: 12px; border: 1px solid #dbeafe; box-shadow: 0 4px 14px rgba(13, 110, 253, 0.06);">
       <div class="rec-header-flex" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
@@ -112,7 +115,7 @@
         <div class="detail-right">
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px;">
             <span class="detail-tag" id="detail-category-badge">CATEGORÍA</span>
-            <span class="detail-tag" id="detail-ai-badge" style="background: #dbeafe; color: #1e40af; display: none;">Recomendado por IA</span>
+            <span class="detail-tag" id="detail-ai-badge" style="background: #dbeafe; color: #1e40af; display: none;">Destacado Top IA</span>
             <span style="font-size: 0.78rem; color: #6c757d;" id="detail-sku-label">SKU: LENOVO-G5</span>
           </div>
           <h2 id="detail-title">Laptop Lenovo Gamer i5 13va Gen</h2>

@@ -110,7 +110,7 @@ async def serverless_db_sync_middleware(request: Request, call_next):
         if new_token:
             response.set_cookie("tn_db_sync", new_token, max_age=31536000, path="/", samesite="lax")
     elif (request.method in ("POST", "PUT", "PATCH", "DELETE") and response.status_code < 400) or (
-        req_path in ("/api/v1/telemetry/recent", "/api/v1/kpi/daily", "/api/v1/store/catalog") and response.status_code == 200
+        req_path in ("/api/v1/telemetry/recent", "/api/v1/kpi/daily", "/api/v1/store/catalog", "/api/v1/experiment/ab-test") and response.status_code == 200
     ):
         if request.method in ("POST", "PUT", "PATCH", "DELETE"):
             mark_local_write_ts()
@@ -118,7 +118,13 @@ async def serverless_db_sync_middleware(request: Request, call_next):
         if new_token:
             response.set_cookie("tn_db_sync", new_token, max_age=31536000, path="/", samesite="lax")
 
-    if req_path.startswith("/api/") or req_path.startswith("/app/") or req_path in ("/db-admin", "/docs", "/openapi.json"):
+    if (
+        req_path.startswith("/api/")
+        or req_path.startswith("/app/")
+        or req_path.startswith("/saas/")
+        or req_path.startswith("/tienda-web/")
+        or req_path in ("/db-admin", "/docs", "/openapi.json")
+    ):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
         response.headers["Pragma"] = "no-cache"
 

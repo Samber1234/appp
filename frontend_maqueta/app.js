@@ -1518,7 +1518,13 @@ const app = (function () {
         if (abanEl) abanEl.textContent = data.reduccion_abandono;
         if (secEl) secEl.textContent = data.secciones_optimizadas;
         // Mantis 0003328: Mostrar siempre el monto con 2 decimales (S/ 18,450.00) idéntico a Test A/B y PDF
-        if (ingEl) ingEl.textContent = data.ingresos_recuperados_decimal || data.ingresos_recuperados;
+        const canonicalIngStr = data.ingresos_recuperados_decimal || data.ingresos_recuperados;
+        if (ingEl) ingEl.textContent = canonicalIngStr;
+        if (dateRange === '7d' && !startDate && !endDate && canonicalIngStr) {
+          sessionStorage.setItem('tn_canonical_ingresos', canonicalIngStr);
+          const abIngEl = document.getElementById('ab-var-b-ingresos') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(2) .ab-stat-line:last-child strong');
+          if (abIngEl) abIngEl.textContent = canonicalIngStr;
+        }
 
         // Actualizar fechas reales en formato ISO YYYY-MM-DD (Mantis 0003191, 0003319)
         const startInput = document.getElementById('custom-start-date');
@@ -1556,19 +1562,19 @@ const app = (function () {
         const data = await res.json();
         const badgeSig = document.getElementById('ab-significance-badge');
         const warnBox = document.getElementById('ab-low-sample-warning');
-        const conclusionEl = document.getElementById('ab-conclusion-text');
+        const conclusionEl = document.getElementById('ab-conclusion-text') || document.querySelector('#subview-ab-testing > .card:last-child p');
 
-        const varATraffic = document.getElementById('ab-var-a-traffic');
-        const varAConvCnt = document.getElementById('ab-var-a-conv-cnt');
-        const varAConvRate = document.getElementById('ab-var-a-conv-rate');
-        const varAIngresos = document.getElementById('ab-var-a-ingresos');
+        const varATraffic = document.getElementById('ab-var-a-traffic') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(1) .ab-stat-line:nth-of-type(1) strong');
+        const varAConvCnt = document.getElementById('ab-var-a-conv-cnt') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(1) .ab-stat-line:nth-of-type(2) strong');
+        const varAConvRate = document.getElementById('ab-var-a-conv-rate') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(1) .ab-stat-line:nth-of-type(3) strong');
+        const varAIngresos = document.getElementById('ab-var-a-ingresos') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(1) .ab-stat-line:nth-of-type(4) strong');
 
-        const cardVarB = document.getElementById('ab-card-var-b');
-        const badgeVarB = document.getElementById('ab-badge-var-b');
-        const varBTraffic = document.getElementById('ab-var-b-traffic');
-        const varBConvCnt = document.getElementById('ab-var-b-conv-cnt');
-        const varBConvRate = document.getElementById('ab-var-b-conv-rate');
-        const varBIngresos = document.getElementById('ab-var-b-ingresos');
+        const cardVarB = document.getElementById('ab-card-var-b') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(2)');
+        const badgeVarB = document.getElementById('ab-badge-var-b') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(2) .ab-badge');
+        const varBTraffic = document.getElementById('ab-var-b-traffic') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(2) .ab-stat-line:nth-of-type(1) strong');
+        const varBConvCnt = document.getElementById('ab-var-b-conv-cnt') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(2) .ab-stat-line:nth-of-type(2) strong');
+        const varBConvRate = document.getElementById('ab-var-b-conv-rate') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(2) .ab-stat-line:nth-of-type(3) strong');
+        const varBIngresos = document.getElementById('ab-var-b-ingresos') || document.querySelector('#subview-ab-testing .ab-comparison-grid .ab-card:nth-child(2) .ab-stat-line:nth-of-type(4) strong');
 
         if (data.variante_a) {
           const va = data.variante_a;
@@ -1582,7 +1588,15 @@ const app = (function () {
           const vb = data.variante_b;
           if (varBTraffic) varBTraffic.textContent = `${100 - (data.split_ratio || 50)}% (${vb.impresiones} compradores)`;
           if (varBConvRate) varBConvRate.textContent = `${Number(vb.tasa_conversion).toFixed(1)}%`;
-          if (varBIngresos) varBIngresos.textContent = vb.ingresos_recuperados_formatted || `S/ ${Number(vb.ingresos_recuperados).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          let bIngFormatted = vb.ingresos_recuperados_formatted || `S/ ${Number(vb.ingresos_recuperados).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          if (!lowSample && data.is_significant) {
+            sessionStorage.setItem('tn_canonical_ingresos', bIngFormatted);
+            const dashIngEl = document.getElementById('kpi-ingresos');
+            if (dashIngEl && dateRange === '7d' && !customDateFilter) {
+              dashIngEl.textContent = bIngFormatted;
+            }
+          }
+          if (varBIngresos) varBIngresos.textContent = bIngFormatted;
           if (lowSample || !data.is_significant) {
             if (varBConvCnt) varBConvCnt.textContent = `${vb.conversiones} compras (muestra preliminar)`;
           } else {
