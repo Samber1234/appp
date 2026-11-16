@@ -1,650 +1,650 @@
 [
-  {
-    "sku": "LENOVO-G5",
-    "name": "Laptop Lenovo Gamer i5 13va Gen",
-    "category": "Laptops & Ultrabooks",
-    "price": 4199.0,
-    "stock": 15,
-    "ai_recommended": true,
-    "match_score": 97
-  },
-  {
-    "sku": "ASUS-ROG",
-    "name": "Laptop ASUS ROG Strix G16 Intel i7",
-    "category": "Laptops & Ultrabooks",
-    "price": 5899.0,
-    "stock": 9,
-    "ai_recommended": false,
-    "match_score": 86
-  },
-  {
-    "sku": "HP-VICTUS",
-    "name": "Laptop HP Victus 15 AMD Ryzen 5",
-    "category": "Laptops & Ultrabooks",
-    "price": 3249.0,
-    "stock": 22,
-    "ai_recommended": false,
-    "match_score": 85
-  },
-  {
-    "sku": "MSI-CYBORG",
-    "name": "Laptop MSI Cyborg 15 Intel Core i5",
-    "category": "Laptops & Ultrabooks",
-    "price": 3899.0,
-    "stock": 14,
-    "ai_recommended": true,
-    "match_score": 94
-  },
-  {
-    "sku": "MACBOOK-M3-PRO",
-    "name": "Apple MacBook Pro 14\" Chip M3 Pro",
-    "category": "Laptops & Ultrabooks",
-    "price": 8499.0,
-    "stock": 8,
-    "ai_recommended": true,
-    "match_score": 93
-  },
-  {
-    "sku": "DELL-XPS-15",
-    "name": "Ultrabook Dell XPS 15 OLED Core Ultra 7",
-    "category": "Laptops & Ultrabooks",
-    "price": 7299.0,
-    "stock": 6,
-    "ai_recommended": false,
-    "match_score": 82
-  },
-  {
-    "sku": "ACER-PREDATOR-16",
-    "name": "Laptop Acer Predator Helios Neo 16 i7",
-    "category": "Laptops & Ultrabooks",
-    "price": 5499.0,
-    "stock": 11,
-    "ai_recommended": false,
-    "match_score": 81
-  },
-  {
-    "sku": "LENOVO-LEGION-7I",
-    "name": "Laptop Lenovo Legion Pro 7i Gen 9 i9",
-    "category": "Laptops & Ultrabooks",
-    "price": 9699.0,
-    "stock": 5,
-    "ai_recommended": false,
-    "match_score": 80
-  },
-  {
-    "sku": "ASUS-ZENBOOK-DUO",
-    "name": "Ultrabook ASUS Zenbook OLED 14 Ultra 7",
-    "category": "Laptops & Ultrabooks",
-    "price": 4799.0,
-    "stock": 17,
-    "ai_recommended": false,
-    "match_score": 79
-  },
-  {
-    "sku": "HP-OMEN-14",
-    "name": "Laptop HP OMEN Transcend 14 OLED",
-    "category": "Laptops & Ultrabooks",
-    "price": 6499.0,
-    "stock": 7,
-    "ai_recommended": false,
-    "match_score": 78
-  },
-  {
-    "sku": "RAZER-BLADE-16",
-    "name": "Laptop Razer Blade 16 Dual-Mode MiniLED",
-    "category": "Laptops & Ultrabooks",
-    "price": 10899.0,
-    "stock": 4,
-    "ai_recommended": false,
-    "match_score": 88
-  },
-  {
-    "sku": "GIGABYTE-AORUS-15",
-    "name": "Laptop Gigabyte AORUS 15 BKF i7",
-    "category": "Laptops & Ultrabooks",
-    "price": 4999.0,
-    "stock": 12,
-    "ai_recommended": false,
-    "match_score": 87
-  },
-  {
-    "sku": "IPHONE-15-PM",
-    "name": "Apple iPhone 15 Pro Max 256GB Titanio",
-    "category": "Smartphones & Tablets",
-    "price": 5399.0,
-    "stock": 18,
-    "ai_recommended": true,
-    "match_score": 92
-  },
-  {
-    "sku": "GALAXY-S24-ULTRA",
-    "name": "Samsung Galaxy S24 Ultra 512GB 5G IA",
-    "category": "Smartphones & Tablets",
-    "price": 5199.0,
-    "stock": 20,
-    "ai_recommended": false,
-    "match_score": 98
-  },
-  {
-    "sku": "XIAOMI-14-ULTRA",
-    "name": "Xiaomi 14 Ultra 512GB Óptica Leica",
-    "category": "Smartphones & Tablets",
-    "price": 4699.0,
-    "stock": 10,
-    "ai_recommended": false,
-    "match_score": 84
-  },
-  {
-    "sku": "IPAD-PRO-M4-13",
-    "name": "Apple iPad Pro 13\" Chip M4 Ultra Retina",
-    "category": "Smartphones & Tablets",
-    "price": 5699.0,
-    "stock": 9,
-    "ai_recommended": false,
-    "match_score": 83
-  },
-  {
-    "sku": "GALAXY-TAB-S9U",
-    "name": "Tablet Samsung Galaxy Tab S9 Ultra 14.6\"",
-    "category": "Smartphones & Tablets",
-    "price": 4499.0,
-    "stock": 8,
-    "ai_recommended": false,
-    "match_score": 82
-  },
-  {
-    "sku": "PIXEL-8-PRO",
-    "name": "Google Pixel 8 Pro 256GB Obsidian",
-    "category": "Smartphones & Tablets",
-    "price": 3799.0,
-    "stock": 11,
-    "ai_recommended": false,
-    "match_score": 81
-  },
-  {
-    "sku": "HONOR-MAGIC6-PRO",
-    "name": "Honor Magic6 Pro 5G 512GB Falcon Camera",
-    "category": "Smartphones & Tablets",
-    "price": 3999.0,
-    "stock": 13,
-    "ai_recommended": false,
-    "match_score": 80
-  },
-  {
-    "sku": "MOTO-EDGE-50U",
-    "name": "Motorola Edge 50 Ultra 512GB Madera/Vegan",
-    "category": "Smartphones & Tablets",
-    "price": 3499.0,
-    "stock": 15,
-    "ai_recommended": false,
-    "match_score": 79
-  },
-  {
-    "sku": "IPAD-AIR-M2",
-    "name": "Apple iPad Air 11\" Chip M2 Wi-Fi 256GB",
-    "category": "Smartphones & Tablets",
-    "price": 3199.0,
-    "stock": 19,
-    "ai_recommended": false,
-    "match_score": 78
-  },
-  {
-    "sku": "ONEPLUS-12-5G",
-    "name": "OnePlus 12 5G 512GB Hasselblad",
-    "category": "Smartphones & Tablets",
-    "price": 3699.0,
-    "stock": 10,
-    "ai_recommended": false,
-    "match_score": 88
-  },
-  {
-    "sku": "REALME-GT6",
-    "name": "Smartphone Realme GT 6 5G 512GB AI Flagship",
-    "category": "Smartphones & Tablets",
-    "price": 2499.0,
-    "stock": 24,
-    "ai_recommended": false,
-    "match_score": 87
-  },
-  {
-    "sku": "REDMI-PAD-PRO",
-    "name": "Tablet Xiaomi Redmi Pad Pro 12.1\" 2.5K",
-    "category": "Smartphones & Tablets",
-    "price": 1299.0,
-    "stock": 30,
-    "ai_recommended": false,
-    "match_score": 86
-  },
-  {
-    "sku": "GPU-RTX-4090",
-    "name": "Tarjeta de Video ASUS ROG Strix RTX 4090 24GB",
-    "category": "Componentes PC & GPUs",
-    "price": 8999.0,
-    "stock": 4,
-    "ai_recommended": false,
-    "match_score": 94
-  },
-  {
-    "sku": "GPU-RTX-4070TIS",
-    "name": "Tarjeta de Video MSI Gaming X Slim RTX 4070 Ti Super",
-    "category": "Componentes PC & GPUs",
-    "price": 3999.0,
-    "stock": 12,
-    "ai_recommended": false,
-    "match_score": 93
-  },
-  {
-    "sku": "CPU-RYZEN-7800X3D",
-    "name": "Procesador AMD Ryzen 7 7800X3D AM5 3D V-Cache",
-    "category": "Componentes PC & GPUs",
-    "price": 1849.0,
-    "stock": 16,
-    "ai_recommended": false,
-    "match_score": 83
-  },
-  {
-    "sku": "CPU-I9-14900K",
-    "name": "Procesador Intel Core i9-14900K 6.0GHz LGA1700",
-    "category": "Componentes PC & GPUs",
-    "price": 2499.0,
-    "stock": 10,
-    "ai_recommended": false,
-    "match_score": 82
-  },
-  {
-    "sku": "MB-ROG-Z790",
-    "name": "Placa Madre ASUS ROG Maximus Z790 Dark Hero",
-    "category": "Componentes PC & GPUs",
-    "price": 2599.0,
-    "stock": 7,
-    "ai_recommended": false,
-    "match_score": 81
-  },
-  {
-    "sku": "RAM-CORSAIR-64",
-    "name": "Memoria RAM Corsair Vengeance RGB 64GB (2x32GB) DDR5",
-    "category": "Componentes PC & GPUs",
-    "price": 1099.0,
-    "stock": 25,
-    "ai_recommended": false,
-    "match_score": 80
-  },
-  {
-    "sku": "SSD-990-PRO-2TB",
-    "name": "SSD M.2 NVMe Samsung 990 PRO 2TB PCIe 4.0",
-    "category": "Componentes PC & GPUs",
-    "price": 799.0,
-    "stock": 32,
-    "ai_recommended": false,
-    "match_score": 79
-  },
-  {
-    "sku": "AIO-NZXT-360",
-    "name": "Refrigeración Líquida NZXT Kraken Elite 360 RGB",
-    "category": "Componentes PC & GPUs",
-    "price": 1199.0,
-    "stock": 11,
-    "ai_recommended": false,
-    "match_score": 78
-  },
-  {
-    "sku": "PSU-CORSAIR-1000",
-    "name": "Fuente de Poder Corsair RM1000e 1000W 80+ Gold ATX 3.0",
-    "category": "Componentes PC & GPUs",
-    "price": 749.0,
-    "stock": 19,
-    "ai_recommended": false,
-    "match_score": 88
-  },
-  {
-    "sku": "CASE-LIANLI-O11",
-    "name": "Case Gamer Lian Li O11 Dynamic EVO RGB Cristal Templado",
-    "category": "Componentes PC & GPUs",
-    "price": 729.0,
-    "stock": 14,
-    "ai_recommended": false,
-    "match_score": 87
-  },
-  {
-    "sku": "GPU-RX-7900XTX",
-    "name": "Tarjeta de Video Sapphire NITRO+ AMD Radeon RX 7900 XTX",
-    "category": "Componentes PC & GPUs",
-    "price": 4599.0,
-    "stock": 6,
-    "ai_recommended": false,
-    "match_score": 86
-  },
-  {
-    "sku": "SSD-WD-BLACK-4TB",
-    "name": "SSD M.2 WD_BLACK SN850X 4TB NVMe con Disipador",
-    "category": "Componentes PC & GPUs",
-    "price": 1499.0,
-    "stock": 9,
-    "ai_recommended": false,
-    "match_score": 85
-  },
-  {
-    "sku": "MON-LG-OLED27",
-    "name": "Monitor Gamer LG UltraGear OLED 27\" QHD 240Hz 0.03ms",
-    "category": "Monitores & Gaming",
-    "price": 3499.0,
-    "stock": 10,
-    "ai_recommended": false,
-    "match_score": 96
-  },
-  {
-    "sku": "MON-ODYSSEY-G9",
-    "name": "Monitor Curvo Samsung Odyssey OLED G9 49\" Dual QHD",
-    "category": "Monitores & Gaming",
-    "price": 5499.0,
-    "stock": 5,
-    "ai_recommended": false,
-    "match_score": 83
-  },
-  {
-    "sku": "MON-ROG-PG32",
-    "name": "Monitor ASUS ROG Swift OLED PG32UCDM 32\" 4K 240Hz",
-    "category": "Monitores & Gaming",
-    "price": 4999.0,
-    "stock": 6,
-    "ai_recommended": false,
-    "match_score": 94
-  },
-  {
-    "sku": "CON-PS5-SLIM",
-    "name": "Consola Sony PlayStation 5 Slim 1TB Edición Lectora",
-    "category": "Monitores & Gaming",
-    "price": 2399.0,
-    "stock": 28,
-    "ai_recommended": false,
-    "match_score": 81
-  },
-  {
-    "sku": "CON-XBOX-SX",
-    "name": "Consola Microsoft Xbox Series X 1TB 4K 120FPS",
-    "category": "Monitores & Gaming",
-    "price": 2299.0,
-    "stock": 15,
-    "ai_recommended": false,
-    "match_score": 80
-  },
-  {
-    "sku": "CON-SWITCH-OLED",
-    "name": "Consola Nintendo Switch Modelo OLED 64GB Blanco",
-    "category": "Monitores & Gaming",
-    "price": 1499.0,
-    "stock": 34,
-    "ai_recommended": false,
-    "match_score": 79
-  },
-  {
-    "sku": "CON-STEAM-OLED",
-    "name": "Consola Portátil Valve Steam Deck OLED 1TB",
-    "category": "Monitores & Gaming",
-    "price": 3199.0,
-    "stock": 8,
-    "ai_recommended": false,
-    "match_score": 78
-  },
-  {
-    "sku": "VR-QUEST-3",
-    "name": "Visor Realidad Mixta Meta Quest 3 512GB 4K+",
-    "category": "Monitores & Gaming",
-    "price": 2699.0,
-    "stock": 12,
-    "ai_recommended": false,
-    "match_score": 88
-  },
-  {
-    "sku": "MON-ALIENWARE-34",
-    "name": "Monitor Curvo Alienware AW3423DWF 34\" QD-OLED 165Hz",
-    "category": "Monitores & Gaming",
-    "price": 3799.0,
-    "stock": 9,
-    "ai_recommended": false,
-    "match_score": 87
-  },
-  {
-    "sku": "MON-ZOWIE-360",
-    "name": "Monitor eSports BenQ ZOWIE XL2566K 24.5\" 360Hz DyAc+",
-    "category": "Monitores & Gaming",
-    "price": 2699.0,
-    "stock": 11,
-    "ai_recommended": false,
-    "match_score": 86
-  },
-  {
-    "sku": "CHAIR-SECRETLAB",
-    "name": "Silla Ergonómica Gamer Secretlab TITAN Evo 2026",
-    "category": "Monitores & Gaming",
-    "price": 2199.0,
-    "stock": 14,
-    "ai_recommended": false,
-    "match_score": 85
-  },
-  {
-    "sku": "PAD-XBOX-ELITE2",
-    "name": "Mando Inalámbrico Xbox Elite Wireless Controller Series 2",
-    "category": "Monitores & Gaming",
-    "price": 699.0,
-    "stock": 21,
-    "ai_recommended": false,
-    "match_score": 84
-  },
-  {
-    "sku": "AUD-SONY-XM5",
-    "name": "Audífonos Inalámbricos Sony WH-1000XM5 Cancelación Ruido",
-    "category": "Audio & Periféricos",
-    "price": 1399.0,
-    "stock": 26,
-    "ai_recommended": false,
-    "match_score": 98
-  },
-  {
-    "sku": "MOU-LOGI-SUPER2",
-    "name": "Mouse Gamer Inalámbrico Logitech G PRO X Superlight 2",
-    "category": "Audio & Periféricos",
-    "price": 599.0,
-    "stock": 35,
-    "ai_recommended": false,
-    "match_score": 97
-  },
-  {
-    "sku": "KB-RAZER-HUNTSMAN",
-    "name": "Teclado Analógico Óptico Razer Huntsman V3 Pro TKL",
-    "category": "Audio & Periféricos",
-    "price": 899.0,
-    "stock": 16,
-    "ai_recommended": false,
-    "match_score": 81
-  },
-  {
-    "sku": "AUD-AIRPODS-PRO2",
-    "name": "Apple AirPods Pro (2da Generación) con Estuche MagSafe USB-C",
-    "category": "Audio & Periféricos",
-    "price": 999.0,
-    "stock": 40,
-    "ai_recommended": false,
-    "match_score": 80
-  },
-  {
-    "sku": "AUD-HYPERX-CLOUD3",
-    "name": "Headset Gamer Inalámbrico HyperX Cloud III Wireless",
-    "category": "Audio & Periféricos",
-    "price": 629.0,
-    "stock": 22,
-    "ai_recommended": false,
-    "match_score": 79
-  },
-  {
-    "sku": "SPK-JBL-CHARGE5",
-    "name": "Parlante Portátil JBL Charge 5 Wi-Fi y Bluetooth IP67",
-    "category": "Audio & Periféricos",
-    "price": 799.0,
-    "stock": 18,
-    "ai_recommended": false,
-    "match_score": 78
-  },
-  {
-    "sku": "MIC-SHURE-MV7P",
-    "name": "Micrófono Dinámico Shure MV7+ Podcast USB-C y XLR",
-    "category": "Audio & Periféricos",
-    "price": 1149.0,
-    "stock": 12,
-    "ai_recommended": false,
-    "match_score": 88
-  },
-  {
-    "sku": "CAM-LOGI-BRIO4K",
-    "name": "Webcam Profesional Logitech Brio 4K Ultra HD HDR",
-    "category": "Audio & Periféricos",
-    "price": 729.0,
-    "stock": 19,
-    "ai_recommended": false,
-    "match_score": 87
-  },
-  {
-    "sku": "KB-KEYCHRON-Q1P",
-    "name": "Teclado Mecánico Custom Keychron Q1 Pro QMK/VIA Aluminio",
-    "category": "Audio & Periféricos",
-    "price": 849.0,
-    "stock": 10,
-    "ai_recommended": false,
-    "match_score": 86
-  },
-  {
-    "sku": "MOU-RAZER-VIPER3",
-    "name": "Mouse Gamer Razer Viper V3 Pro Ultraligero 54g",
-    "category": "Audio & Periféricos",
-    "price": 649.0,
-    "stock": 17,
-    "ai_recommended": false,
-    "match_score": 85
-  },
-  {
-    "sku": "AUD-BOSE-QCU",
-    "name": "Audífonos Inalámbricos Bose QuietComfort Ultra Audio Inmersivo",
-    "category": "Audio & Periféricos",
-    "price": 1599.0,
-    "stock": 9,
-    "ai_recommended": false,
-    "match_score": 84
-  },
-  {
-    "sku": "CTRL-STREAMDECK",
-    "name": "Controlador de Estudio Elgato Stream Deck MK.2 15 Teclas LCD",
-    "category": "Audio & Periféricos",
-    "price": 679.0,
-    "stock": 14,
-    "ai_recommended": false,
-    "match_score": 83
-  },
-  {
-    "sku": "NET-ROG-WIFI7",
-    "name": "Router Gaming Cuatribanda ASUS ROG Rapture GT-BE98 Wi-Fi 7",
-    "category": "Smart Home & Redes",
-    "price": 2699.0,
-    "stock": 6,
-    "ai_recommended": false,
-    "match_score": 93
-  },
-  {
-    "sku": "NET-DECO-WIFI7",
-    "name": "Sistema Mesh TP-Link Deco BE85 Wi-Fi 7 BE22000 (Pack x2)",
-    "category": "Smart Home & Redes",
-    "price": 3299.0,
-    "stock": 8,
-    "ai_recommended": false,
-    "match_score": 81
-  },
-  {
-    "sku": "SH-ECHO-SHOW10",
-    "name": "Pantalla Inteligente Amazon Echo Show 10 (3ra Gen) Giro Automático",
-    "category": "Smart Home & Redes",
-    "price": 999.0,
-    "stock": 15,
-    "ai_recommended": false,
-    "match_score": 80
-  },
-  {
-    "sku": "SH-ARLO-ULTRA2",
-    "name": "Kit 2 Cámaras de Seguridad Inalámbricas Arlo Ultra 2 Spotlight 4K",
-    "category": "Smart Home & Redes",
-    "price": 1899.0,
-    "stock": 10,
-    "ai_recommended": false,
-    "match_score": 79
-  },
-  {
-    "sku": "SH-ROBOROCK-S8",
-    "name": "Robot Aspiradora y Trapeadora Roborock S8 Pro Ultra Autolavado",
-    "category": "Smart Home & Redes",
-    "price": 4299.0,
-    "stock": 7,
-    "ai_recommended": false,
-    "match_score": 96
-  },
-  {
-    "sku": "SH-YALE-WIFI",
-    "name": "Cerradura Digital Inteligente Yale YMC 420D Biometría + Wi-Fi",
-    "category": "Smart Home & Redes",
-    "price": 1249.0,
-    "stock": 16,
-    "ai_recommended": false,
-    "match_score": 88
-  },
-  {
-    "sku": "SH-HUE-STARTER",
-    "name": "Kit de Inicio Iluminación Inteligente Philips Hue White & Color x3",
-    "category": "Smart Home & Redes",
-    "price": 749.0,
-    "stock": 20,
-    "ai_recommended": false,
-    "match_score": 87
-  },
-  {
-    "sku": "NAS-SYNOLOGY-923",
-    "name": "Servidor NAS Synology DiskStation DS923+ 4 Bahías AMD Ryzen",
-    "category": "Smart Home & Redes",
-    "price": 2899.0,
-    "stock": 9,
-    "ai_recommended": false,
-    "match_score": 86
-  },
-  {
-    "sku": "UPS-APC-1500",
-    "name": "UPS Interactivo APC Back-UPS Pro 1500VA / 865W Pantalla LCD",
-    "category": "Smart Home & Redes",
-    "price": 1199.0,
-    "stock": 18,
-    "ai_recommended": false,
-    "match_score": 85
-  },
-  {
-    "sku": "NET-UNIFI-24POE",
-    "name": "Switch Administrable Ubiquiti UniFi Standard 24 PoE (USW-24-PoE)",
-    "category": "Smart Home & Redes",
-    "price": 1799.0,
-    "stock": 8,
-    "ai_recommended": false,
-    "match_score": 84
-  },
-  {
-    "sku": "SH-FREESTYLE-2",
-    "name": "Proyector Portátil Smart Samsung The Freestyle 2da Gen Con Gaming Hub",
-    "category": "Smart Home & Redes",
-    "price": 2499.0,
-    "stock": 11,
-    "ai_recommended": false,
-    "match_score": 83
-  },
-  {
-    "sku": "SH-TAPO-P110",
-    "name": "Pack x4 Enchufes Inteligentes Wi-Fi TP-Link Tapo P110 Monitoreo Energía",
-    "category": "Smart Home & Redes",
-    "price": 219.0,
-    "stock": 45,
-    "ai_recommended": false,
-    "match_score": 82
-  }
+    {
+        "sku":  "LENOVO-G5",
+        "name":  "Laptop Lenovo Gamer i5 13va Gen",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  4199,
+        "stock":  15,
+        "ai_recommended":  true,
+        "match_score":  97
+    },
+    {
+        "sku":  "ASUS-ROG",
+        "name":  "Laptop ASUS ROG Strix G16 Intel i7",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  5899,
+        "stock":  9,
+        "ai_recommended":  false,
+        "match_score":  86
+    },
+    {
+        "sku":  "HP-VICTUS",
+        "name":  "Laptop HP Victus 15 AMD Ryzen 5",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  3249,
+        "stock":  22,
+        "ai_recommended":  false,
+        "match_score":  85
+    },
+    {
+        "sku":  "MSI-CYBORG",
+        "name":  "Laptop MSI Cyborg 15 Intel Core i5",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  3899,
+        "stock":  14,
+        "ai_recommended":  true,
+        "match_score":  94
+    },
+    {
+        "sku":  "MACBOOK-M3-PRO",
+        "name":  "Apple MacBook Pro 14\" Chip M3 Pro",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  8499,
+        "stock":  8,
+        "ai_recommended":  true,
+        "match_score":  93
+    },
+    {
+        "sku":  "DELL-XPS-15",
+        "name":  "Ultrabook Dell XPS 15 OLED Core Ultra 7",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  7299,
+        "stock":  6,
+        "ai_recommended":  false,
+        "match_score":  82
+    },
+    {
+        "sku":  "ACER-PREDATOR-16",
+        "name":  "Laptop Acer Predator Helios Neo 16 i7",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  5499,
+        "stock":  11,
+        "ai_recommended":  false,
+        "match_score":  81
+    },
+    {
+        "sku":  "LENOVO-LEGION-7I",
+        "name":  "Laptop Lenovo Legion Pro 7i Gen 9 i9",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  9699,
+        "stock":  5,
+        "ai_recommended":  false,
+        "match_score":  80
+    },
+    {
+        "sku":  "ASUS-ZENBOOK-DUO",
+        "name":  "Ultrabook ASUS Zenbook OLED 14 Ultra 7",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  4799,
+        "stock":  17,
+        "ai_recommended":  false,
+        "match_score":  79
+    },
+    {
+        "sku":  "HP-OMEN-14",
+        "name":  "Laptop HP OMEN Transcend 14 OLED",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  6499,
+        "stock":  7,
+        "ai_recommended":  false,
+        "match_score":  78
+    },
+    {
+        "sku":  "RAZER-BLADE-16",
+        "name":  "Laptop Razer Blade 16 Dual-Mode MiniLED",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  10899,
+        "stock":  4,
+        "ai_recommended":  false,
+        "match_score":  88
+    },
+    {
+        "sku":  "GIGABYTE-AORUS-15",
+        "name":  "Laptop Gigabyte AORUS 15 BKF i7",
+        "category":  "Laptops \u0026 Ultrabooks",
+        "price":  4999,
+        "stock":  12,
+        "ai_recommended":  false,
+        "match_score":  87
+    },
+    {
+        "sku":  "IPHONE-15-PM",
+        "name":  "Apple iPhone 15 Pro Max 256GB Titanio",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  5399,
+        "stock":  18,
+        "ai_recommended":  true,
+        "match_score":  92
+    },
+    {
+        "sku":  "GALAXY-S24-ULTRA",
+        "name":  "Samsung Galaxy S24 Ultra 512GB 5G IA",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  5199,
+        "stock":  20,
+        "ai_recommended":  true,
+        "match_score":  98
+    },
+    {
+        "sku":  "XIAOMI-14-ULTRA",
+        "name":  "Xiaomi 14 Ultra 512GB Óptica Leica",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  4699,
+        "stock":  10,
+        "ai_recommended":  false,
+        "match_score":  84
+    },
+    {
+        "sku":  "IPAD-PRO-M4-13",
+        "name":  "Apple iPad Pro 13\" Chip M4 Ultra Retina",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  5699,
+        "stock":  9,
+        "ai_recommended":  false,
+        "match_score":  83
+    },
+    {
+        "sku":  "GALAXY-TAB-S9U",
+        "name":  "Tablet Samsung Galaxy Tab S9 Ultra 14.6\"",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  4499,
+        "stock":  8,
+        "ai_recommended":  false,
+        "match_score":  82
+    },
+    {
+        "sku":  "PIXEL-8-PRO",
+        "name":  "Google Pixel 8 Pro 256GB Obsidian",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  3799,
+        "stock":  11,
+        "ai_recommended":  false,
+        "match_score":  81
+    },
+    {
+        "sku":  "HONOR-MAGIC6-PRO",
+        "name":  "Honor Magic6 Pro 5G 512GB Falcon Camera",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  3999,
+        "stock":  13,
+        "ai_recommended":  false,
+        "match_score":  80
+    },
+    {
+        "sku":  "MOTO-EDGE-50U",
+        "name":  "Motorola Edge 50 Ultra 512GB Madera/Vegan",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  3499,
+        "stock":  15,
+        "ai_recommended":  false,
+        "match_score":  79
+    },
+    {
+        "sku":  "IPAD-AIR-M2",
+        "name":  "Apple iPad Air 11\" Chip M2 Wi-Fi 256GB",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  3199,
+        "stock":  19,
+        "ai_recommended":  false,
+        "match_score":  78
+    },
+    {
+        "sku":  "ONEPLUS-12-5G",
+        "name":  "OnePlus 12 5G 512GB Hasselblad",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  3699,
+        "stock":  10,
+        "ai_recommended":  false,
+        "match_score":  88
+    },
+    {
+        "sku":  "REALME-GT6",
+        "name":  "Smartphone Realme GT 6 5G 512GB AI Flagship",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  2499,
+        "stock":  24,
+        "ai_recommended":  false,
+        "match_score":  87
+    },
+    {
+        "sku":  "REDMI-PAD-PRO",
+        "name":  "Tablet Xiaomi Redmi Pad Pro 12.1\" 2.5K",
+        "category":  "Smartphones \u0026 Tablets",
+        "price":  1299,
+        "stock":  30,
+        "ai_recommended":  false,
+        "match_score":  86
+    },
+    {
+        "sku":  "GPU-RTX-4090",
+        "name":  "Tarjeta de Video ASUS ROG Strix RTX 4090 24GB",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  8999,
+        "stock":  4,
+        "ai_recommended":  true,
+        "match_score":  94
+    },
+    {
+        "sku":  "GPU-RTX-4070TIS",
+        "name":  "Tarjeta de Video MSI Gaming X Slim RTX 4070 Ti Super",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  3999,
+        "stock":  12,
+        "ai_recommended":  true,
+        "match_score":  93
+    },
+    {
+        "sku":  "CPU-RYZEN-7800X3D",
+        "name":  "Procesador AMD Ryzen 7 7800X3D AM5 3D V-Cache",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  1849,
+        "stock":  16,
+        "ai_recommended":  false,
+        "match_score":  83
+    },
+    {
+        "sku":  "CPU-I9-14900K",
+        "name":  "Procesador Intel Core i9-14900K 6.0GHz LGA1700",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  2499,
+        "stock":  10,
+        "ai_recommended":  false,
+        "match_score":  82
+    },
+    {
+        "sku":  "MB-ROG-Z790",
+        "name":  "Placa Madre ASUS ROG Maximus Z790 Dark Hero",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  2599,
+        "stock":  7,
+        "ai_recommended":  false,
+        "match_score":  81
+    },
+    {
+        "sku":  "RAM-CORSAIR-64",
+        "name":  "Memoria RAM Corsair Vengeance RGB 64GB (2x32GB) DDR5",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  1099,
+        "stock":  25,
+        "ai_recommended":  false,
+        "match_score":  80
+    },
+    {
+        "sku":  "SSD-990-PRO-2TB",
+        "name":  "SSD M.2 NVMe Samsung 990 PRO 2TB PCIe 4.0",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  799,
+        "stock":  32,
+        "ai_recommended":  false,
+        "match_score":  79
+    },
+    {
+        "sku":  "AIO-NZXT-360",
+        "name":  "Refrigeración Líquida NZXT Kraken Elite 360 RGB",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  1199,
+        "stock":  11,
+        "ai_recommended":  false,
+        "match_score":  78
+    },
+    {
+        "sku":  "PSU-CORSAIR-1000",
+        "name":  "Fuente de Poder Corsair RM1000e 1000W 80+ Gold ATX 3.0",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  749,
+        "stock":  19,
+        "ai_recommended":  false,
+        "match_score":  88
+    },
+    {
+        "sku":  "CASE-LIANLI-O11",
+        "name":  "Case Gamer Lian Li O11 Dynamic EVO RGB Cristal Templado",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  729,
+        "stock":  14,
+        "ai_recommended":  false,
+        "match_score":  87
+    },
+    {
+        "sku":  "GPU-RX-7900XTX",
+        "name":  "Tarjeta de Video Sapphire NITRO+ AMD Radeon RX 7900 XTX",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  4599,
+        "stock":  6,
+        "ai_recommended":  false,
+        "match_score":  86
+    },
+    {
+        "sku":  "SSD-WD-BLACK-4TB",
+        "name":  "SSD M.2 WD_BLACK SN850X 4TB NVMe con Disipador",
+        "category":  "Componentes PC \u0026 GPUs",
+        "price":  1499,
+        "stock":  9,
+        "ai_recommended":  false,
+        "match_score":  85
+    },
+    {
+        "sku":  "MON-LG-OLED27",
+        "name":  "Monitor Gamer LG UltraGear OLED 27\" QHD 240Hz 0.03ms",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  3499,
+        "stock":  10,
+        "ai_recommended":  true,
+        "match_score":  96
+    },
+    {
+        "sku":  "MON-ODYSSEY-G9",
+        "name":  "Monitor Curvo Samsung Odyssey OLED G9 49\" Dual QHD",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  5499,
+        "stock":  5,
+        "ai_recommended":  false,
+        "match_score":  83
+    },
+    {
+        "sku":  "MON-ROG-PG32",
+        "name":  "Monitor ASUS ROG Swift OLED PG32UCDM 32\" 4K 240Hz",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  4999,
+        "stock":  6,
+        "ai_recommended":  true,
+        "match_score":  94
+    },
+    {
+        "sku":  "CON-PS5-SLIM",
+        "name":  "Consola Sony PlayStation 5 Slim 1TB Edición Lectora",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  2399,
+        "stock":  28,
+        "ai_recommended":  false,
+        "match_score":  81
+    },
+    {
+        "sku":  "CON-XBOX-SX",
+        "name":  "Consola Microsoft Xbox Series X 1TB 4K 120FPS",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  2299,
+        "stock":  15,
+        "ai_recommended":  false,
+        "match_score":  80
+    },
+    {
+        "sku":  "CON-SWITCH-OLED",
+        "name":  "Consola Nintendo Switch Modelo OLED 64GB Blanco",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  1499,
+        "stock":  34,
+        "ai_recommended":  false,
+        "match_score":  79
+    },
+    {
+        "sku":  "CON-STEAM-OLED",
+        "name":  "Consola Portátil Valve Steam Deck OLED 1TB",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  3199,
+        "stock":  8,
+        "ai_recommended":  false,
+        "match_score":  78
+    },
+    {
+        "sku":  "VR-QUEST-3",
+        "name":  "Visor Realidad Mixta Meta Quest 3 512GB 4K+",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  2699,
+        "stock":  12,
+        "ai_recommended":  false,
+        "match_score":  88
+    },
+    {
+        "sku":  "MON-ALIENWARE-34",
+        "name":  "Monitor Curvo Alienware AW3423DWF 34\" QD-OLED 165Hz",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  3799,
+        "stock":  9,
+        "ai_recommended":  false,
+        "match_score":  87
+    },
+    {
+        "sku":  "MON-ZOWIE-360",
+        "name":  "Monitor eSports BenQ ZOWIE XL2566K 24.5\" 360Hz DyAc+",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  2699,
+        "stock":  11,
+        "ai_recommended":  false,
+        "match_score":  86
+    },
+    {
+        "sku":  "CHAIR-SECRETLAB",
+        "name":  "Silla Ergonómica Gamer Secretlab TITAN Evo 2026",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  2199,
+        "stock":  14,
+        "ai_recommended":  false,
+        "match_score":  85
+    },
+    {
+        "sku":  "PAD-XBOX-ELITE2",
+        "name":  "Mando Inalámbrico Xbox Elite Wireless Controller Series 2",
+        "category":  "Monitores \u0026 Gaming",
+        "price":  699,
+        "stock":  21,
+        "ai_recommended":  false,
+        "match_score":  84
+    },
+    {
+        "sku":  "AUD-SONY-XM5",
+        "name":  "Audífonos Inalámbricos Sony WH-1000XM5 Cancelación Ruido",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  1399,
+        "stock":  26,
+        "ai_recommended":  true,
+        "match_score":  98
+    },
+    {
+        "sku":  "MOU-LOGI-SUPER2",
+        "name":  "Mouse Gamer Inalámbrico Logitech G PRO X Superlight 2",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  599,
+        "stock":  35,
+        "ai_recommended":  true,
+        "match_score":  97
+    },
+    {
+        "sku":  "KB-RAZER-HUNTSMAN",
+        "name":  "Teclado Analógico Óptico Razer Huntsman V3 Pro TKL",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  899,
+        "stock":  16,
+        "ai_recommended":  false,
+        "match_score":  81
+    },
+    {
+        "sku":  "AUD-AIRPODS-PRO2",
+        "name":  "Apple AirPods Pro (2da Generación) con Estuche MagSafe USB-C",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  999,
+        "stock":  40,
+        "ai_recommended":  false,
+        "match_score":  80
+    },
+    {
+        "sku":  "AUD-HYPERX-CLOUD3",
+        "name":  "Headset Gamer Inalámbrico HyperX Cloud III Wireless",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  629,
+        "stock":  22,
+        "ai_recommended":  false,
+        "match_score":  79
+    },
+    {
+        "sku":  "SPK-JBL-CHARGE5",
+        "name":  "Parlante Portátil JBL Charge 5 Wi-Fi y Bluetooth IP67",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  799,
+        "stock":  18,
+        "ai_recommended":  false,
+        "match_score":  78
+    },
+    {
+        "sku":  "MIC-SHURE-MV7P",
+        "name":  "Micrófono Dinámico Shure MV7+ Podcast USB-C y XLR",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  1149,
+        "stock":  12,
+        "ai_recommended":  false,
+        "match_score":  88
+    },
+    {
+        "sku":  "CAM-LOGI-BRIO4K",
+        "name":  "Webcam Profesional Logitech Brio 4K Ultra HD HDR",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  729,
+        "stock":  19,
+        "ai_recommended":  false,
+        "match_score":  87
+    },
+    {
+        "sku":  "KB-KEYCHRON-Q1P",
+        "name":  "Teclado Mecánico Custom Keychron Q1 Pro QMK/VIA Aluminio",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  849,
+        "stock":  10,
+        "ai_recommended":  false,
+        "match_score":  86
+    },
+    {
+        "sku":  "MOU-RAZER-VIPER3",
+        "name":  "Mouse Gamer Razer Viper V3 Pro Ultraligero 54g",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  649,
+        "stock":  17,
+        "ai_recommended":  false,
+        "match_score":  85
+    },
+    {
+        "sku":  "AUD-BOSE-QCU",
+        "name":  "Audífonos Inalámbricos Bose QuietComfort Ultra Audio Inmersivo",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  1599,
+        "stock":  9,
+        "ai_recommended":  false,
+        "match_score":  84
+    },
+    {
+        "sku":  "CTRL-STREAMDECK",
+        "name":  "Controlador de Estudio Elgato Stream Deck MK.2 15 Teclas LCD",
+        "category":  "Audio \u0026 Periféricos",
+        "price":  679,
+        "stock":  14,
+        "ai_recommended":  false,
+        "match_score":  83
+    },
+    {
+        "sku":  "NET-ROG-WIFI7",
+        "name":  "Router Gaming Cuatribanda ASUS ROG Rapture GT-BE98 Wi-Fi 7",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  2699,
+        "stock":  6,
+        "ai_recommended":  true,
+        "match_score":  93
+    },
+    {
+        "sku":  "NET-DECO-WIFI7",
+        "name":  "Sistema Mesh TP-Link Deco BE85 Wi-Fi 7 BE22000 (Pack x2)",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  3299,
+        "stock":  8,
+        "ai_recommended":  false,
+        "match_score":  81
+    },
+    {
+        "sku":  "SH-ECHO-SHOW10",
+        "name":  "Pantalla Inteligente Amazon Echo Show 10 (3ra Gen) Giro Automático",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  999,
+        "stock":  15,
+        "ai_recommended":  false,
+        "match_score":  80
+    },
+    {
+        "sku":  "SH-ARLO-ULTRA2",
+        "name":  "Kit 2 Cámaras de Seguridad Inalámbricas Arlo Ultra 2 Spotlight 4K",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  1899,
+        "stock":  10,
+        "ai_recommended":  false,
+        "match_score":  79
+    },
+    {
+        "sku":  "SH-ROBOROCK-S8",
+        "name":  "Robot Aspiradora y Trapeadora Roborock S8 Pro Ultra Autolavado",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  4299,
+        "stock":  7,
+        "ai_recommended":  true,
+        "match_score":  96
+    },
+    {
+        "sku":  "SH-YALE-WIFI",
+        "name":  "Cerradura Digital Inteligente Yale YMC 420D Biometría + Wi-Fi",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  1249,
+        "stock":  16,
+        "ai_recommended":  false,
+        "match_score":  88
+    },
+    {
+        "sku":  "SH-HUE-STARTER",
+        "name":  "Kit de Inicio Iluminación Inteligente Philips Hue White \u0026 Color x3",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  749,
+        "stock":  20,
+        "ai_recommended":  false,
+        "match_score":  87
+    },
+    {
+        "sku":  "NAS-SYNOLOGY-923",
+        "name":  "Servidor NAS Synology DiskStation DS923+ 4 Bahías AMD Ryzen",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  2899,
+        "stock":  9,
+        "ai_recommended":  false,
+        "match_score":  86
+    },
+    {
+        "sku":  "UPS-APC-1500",
+        "name":  "UPS Interactivo APC Back-UPS Pro 1500VA / 865W Pantalla LCD",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  1199,
+        "stock":  18,
+        "ai_recommended":  false,
+        "match_score":  85
+    },
+    {
+        "sku":  "NET-UNIFI-24POE",
+        "name":  "Switch Administrable Ubiquiti UniFi Standard 24 PoE (USW-24-PoE)",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  1799,
+        "stock":  8,
+        "ai_recommended":  false,
+        "match_score":  84
+    },
+    {
+        "sku":  "SH-FREESTYLE-2",
+        "name":  "Proyector Portátil Smart Samsung The Freestyle 2da Gen Con Gaming Hub",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  2499,
+        "stock":  11,
+        "ai_recommended":  false,
+        "match_score":  83
+    },
+    {
+        "sku":  "SH-TAPO-P110",
+        "name":  "Pack x4 Enchufes Inteligentes Wi-Fi TP-Link Tapo P110 Monitoreo Energía",
+        "category":  "Smart Home \u0026 Redes",
+        "price":  219,
+        "stock":  45,
+        "ai_recommended":  false,
+        "match_score":  82
+    }
 ]
