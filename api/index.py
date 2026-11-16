@@ -9,7 +9,4 @@ if backend_dir not in sys.path:
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-try:
-    from backend_local.server import app
-except ModuleNotFoundError:
-    from server import app
+from backend_local.server import app
