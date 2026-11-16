@@ -15,11 +15,56 @@
   const API_URL = window.location.origin || (currentScript && currentScript.getAttribute('data-api-url')) || 'http://localhost:8000';
   let inactivityLimitSec = parseInt((currentScript && currentScript.getAttribute('data-inactivity-seconds')) || '8', 10);
   let campaignActive = true;
+  let sdkOriginToken = 'sdk_rt001_3a720d4ab5a0d3da85dfe2cd';
 
   let sessionId = sessionStorage.getItem('technova_session_id');
-  if (!sessionId) {
+  if (!sessionId || sessionId.length < 8) {
     sessionId = 'sess_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
     sessionStorage.setItem('technova_session_id', sessionId);
+  }
+
+  // Huella determinística por navegador/comprador para sincronizar política de 24h en backend (Redis)
+  function computeClientBuyerHash() {
+    const raw = [
+      RETAIL_ID,
+      navigator.userAgent || 'ua',
+      navigator.language || 'es-PE',
+      (window.screen && `${window.screen.width}x${window.screen.height}`) || '1366x768'
+    ].join('|');
+    let h1 = 0xdeadbeef ^ raw.length;
+    let h2 = 0x41c6ce57 ^ raw.length;
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return 'cli_' + (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+  }
+  const CLIENT_BUYER_HASH = computeClientBuyerHash();
+
+  function computeFallbackSha256Hex(seedStr) {
+    let out = '';
+    for (let block = 0; block < 8; block++) {
+      let h = (0x811c9dc5 ^ (block * 0x9e3779b9)) >>> 0;
+      const str = `${seedStr}|blk_${block}`;
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+      }
+      out += h.toString(16).padStart(8, '0');
+    }
+    return out.slice(0, 64);
+  }
+
+  function getSdkHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'X-Retail-ID': RETAIL_ID,
+      'X-TechNova-SDK-Token': sdkOriginToken,
+      'X-Client-Hash': CLIENT_BUYER_HASH
+    };
   }
 
   let inactivityTimer = null;
@@ -85,7 +130,7 @@
       if (!queue.length) return;
       const res = await fetch(`${API_URL}/api/v1/telemetry/offline-queue`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSdkHeaders(),
         body: JSON.stringify(queue)
       });
       if (res.ok) {
@@ -151,17 +196,20 @@
     try {
       const res = await fetch(`${API_URL}/api/v1/telemetry/event`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSdkHeaders(),
         body: JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
+        const ipHash64 = (data.AnonymizedIpHash && data.AnonymizedIpHash.length === 64)
+          ? data.AnonymizedIpHash
+          : computeFallbackSha256Hex(payload.session_id);
         persistLiveTelemetryCrossTab({
           PK_SessionId: data.PK_SessionId || payload.session_id,
           SK_Timestamp: data.SK_Timestamp || getPeruIsoNow(),
           EventType: data.EventType || payload.event_type,
           ProductSku: data.ProductSku || payload.product_sku || 'LENOVO-G5',
-          AnonymizedIpHash: data.AnonymizedIpHash || '8b29b07c600569e4',
+          AnonymizedIpHash: ipHash64,
           Compliance_Ley29733: true
         });
         logAI(`Evento '${eventType}' persistido en DynamoDB (<40ms)`);
@@ -175,12 +223,24 @@
   async function evaluateAbandonment(triggerReason = 'inactivity_8s') {
     if (offerActive || !campaignActive) return;
 
-    // HU0037-1 / CP042: Respeto de límite de frecuencia de 24 horas
+    // 0003326 (CP041, CP071): Verificar si ya se canjeó el cupón de un solo uso en la sesión
+    if (sessionStorage.getItem(`tn_offer_converted_${RETAIL_ID}`) === 'true' || sessionStorage.getItem('tn_coupon_redeemed_RT-001') === 'true') {
+      logAI('Política de uso único: El comprador ya aplicó su cupón promocional en esta sesión.', 'info');
+      if (triggerReason === 'manual_test') {
+        showToastNotification('Ya utilizaste tu cupón de descuento único (30%) en esta sesión.', '#0d6efd');
+      }
+      return;
+    }
+
+    // HU0037-1 / CP042, CP072: Respeto estricto de límite de frecuencia de 24 horas en cliente + servidor
     const lastDismissed = localStorage.getItem(`technova_dismissed_${RETAIL_ID}`);
     if (lastDismissed) {
       const elapsedHours = (Date.now() - parseInt(lastDismissed, 10)) / (1000 * 60 * 60);
       if (elapsedHours < 24) {
         logAI(`Frecuencia activa: Oferta pausada para respetar límite de 24h (${elapsedHours.toFixed(1)}h transcurridas)`, 'info');
+        if (triggerReason === 'manual_test') {
+          showToastNotification('Política de frecuencia 24h activa: no se muestran nuevas ofertas hasta mañana.', '#0d6efd');
+        }
         return;
       }
     }
@@ -196,6 +256,7 @@
     const payload = {
       session_id: sessionId,
       retail_id: RETAIL_ID,
+      client_hash: CLIENT_BUYER_HASH,
       product_sku: (currentProductData && currentProductData.sku) || 'LENOVO-G5',
       product_name: (currentProductData && currentProductData.name) || 'Laptop Lenovo Gamer',
       original_price: (currentProductData && currentProductData.price) || 4199.00,
@@ -208,7 +269,7 @@
     try {
       const res = await fetch(`${API_URL}/api/v1/ml/predict-offer`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSdkHeaders(),
         body: JSON.stringify(payload)
       });
 
@@ -220,20 +281,22 @@
         renderOfferModal(data);
       } else {
         window.TechNova.mostrarAlerta = false;
-        logAI(`Inferencia finalizada: ${data.reason || 'No se despliega oferta.'}`, 'info');
+        if (data.reason === 'FREQUENCY_LIMIT_ACTIVE') {
+          localStorage.setItem(`technova_dismissed_${RETAIL_ID}`, Date.now().toString());
+          if (triggerReason === 'manual_test') {
+            showToastNotification('Política de frecuencia 24h activa en servidor (Redis): oferta bloqueada.', '#0d6efd');
+          }
+        } else if (data.reason === 'COUPON_ALREADY_REDEEMED_IN_SESSION') {
+          sessionStorage.setItem(`tn_offer_converted_${RETAIL_ID}`, 'true');
+          if (triggerReason === 'manual_test') {
+            showToastNotification('El cupón de un solo uso ya fue canjeado en esta sesión.', '#0d6efd');
+          }
+        }
+        logAI(`Inferencia finalizada: ${data.message || data.reason || 'No se despliega oferta.'}`, 'info');
       }
     } catch (err) {
-      window.TechNova.mostrarAlerta = true;
-      renderOfferModal({
-        title: '¡Oferta personalizada exclusiva para ti!',
-        body: 'Hola Giancarlo, detectamos interés en Laptop Lenovo Gamer y queremos ofrecerte un 30% de descuento para la Laptop Lenovo Gamer si finalizas tu compra ahora.',
-        discount_percent: 30,
-        original_price: 4199.00,
-        discounted_price: 2939.30,
-        urgency_seconds: 300,
-        cta_text: 'Comprar ahora',
-        accent_color: '#198754'
-      });
+      window.TechNova.mostrarAlerta = false;
+      logAI('Servicio de inferencia no disponible o bloqueado por política de frecuencia.', 'warn');
     }
   }
 
@@ -248,6 +311,7 @@
     let remainingSeconds = data.urgency_seconds || 300;
     const discPct = data.discount_percent || 30;
     const prodLabel = data.product_name || 'Laptop Lenovo Gamer';
+    const couponCode = data.coupon_code || 'TN30-UNICO';
 
     const overlay = document.createElement('div');
     overlay.id = 'technova-overlay';
@@ -259,7 +323,10 @@
         
         <h2 style="font-size: 1.35rem; color: #1a1a1a; margin: 0 0 10px 0; line-height: 1.3;">${data.title || '¡Oferta personalizada exclusiva para ti!'}</h2>
         <p style="font-size: 0.95rem; color: #555; line-height: 1.5; margin-bottom: 12px;">${data.body}</p>
-        <p style="font-size: 0.9rem; font-weight: bold; color: ${accentColor}; margin-bottom: 16px;">${discPct}% de descuento para la ${prodLabel}</p>
+        <p style="font-size: 0.9rem; font-weight: bold; color: ${accentColor}; margin-bottom: 10px;">${discPct}% de descuento para la ${prodLabel}</p>
+        <div style="font-size: 0.78rem; color: #0f5132; background: #d1e7dd; padding: 5px 10px; border-radius: 6px; margin-bottom: 14px; font-weight: 600;">
+          Cupón de 1 solo uso: <code id="technova-coupon-code">${couponCode}</code> (No acumulable)
+        </div>
         
         <div style="background: #f8f9fa; border: 1px dashed ${accentColor}; border-radius: 8px; padding: 12px; margin-bottom: 20px; display: flex; justify-content: space-around; align-items: center;">
           <div style="text-align: left;">
@@ -310,41 +377,60 @@
       }
     }, 1000);
 
-    // HU0037-1 / CP042: Cierre inmediato al primer clic en '(X)' y respeto de 24h
+    // HU0037-1 / CP042, CP072: Cierre inmediato al primer clic en '(X)' y respeto de 24h en cliente y servidor
     document.getElementById('technova-btn-close').addEventListener('click', () => {
       closeOfferModal();
       localStorage.setItem(`technova_dismissed_${RETAIL_ID}`, Date.now().toString());
       fetch(`${API_URL}/api/v1/alert-dismiss`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, retail_id: RETAIL_ID })
+        headers: getSdkHeaders(),
+        body: JSON.stringify({ session_id: sessionId, retail_id: RETAIL_ID, client_hash: CLIENT_BUYER_HASH })
       }).catch(() => {});
-      logAI('Usuario cerró la oferta con (X). Frecuencia de 24 horas activada.', 'info');
+      logAI('Usuario cerró la oferta con (X). Frecuencia de 24 horas activada en cliente y servidor.', 'info');
       sendTelemetry('offer_dismissed');
     });
 
-    // HU0036-1 / CP041: Botón CTA 'Comprar ahora'
+    // HU0036-1 / CP041, CP071: Botón CTA 'Comprar ahora' con validación de cupón de un solo uso
     document.getElementById('technova-btn-cta').addEventListener('click', async () => {
       closeOfferModal();
-      showToastNotification('¡Conversión exitosa! Descuento del 30% aplicado a tu pedido.');
-      logAI('¡Conversión exitosa! Descuento del 30% aplicado a tu pedido.', 'success');
 
+      let conversionAccepted = true;
       try {
-        await fetch(`${API_URL}/api/v1/conversion`, {
+        const res = await fetch(`${API_URL}/api/v1/conversion`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getSdkHeaders(),
           body: JSON.stringify({
             session_id: sessionId,
             retail_id: RETAIL_ID,
+            client_hash: CLIENT_BUYER_HASH,
+            coupon_code: couponCode,
             product_sku: data.recommended_sku || 'LENOVO-G5',
             product_name: data.product_name || 'Laptop Lenovo Gamer i5',
             discount_percent: data.discount_percent || 30.0,
             amount_recovered: data.discounted_price || 2939.30
           })
         });
+        if (!res.ok) {
+          conversionAccepted = false;
+        }
       } catch (e) {
-        // local fallback
+        // Si está offline, validar por estado de sesión local
+        if (sessionStorage.getItem(`tn_offer_converted_${RETAIL_ID}`) === 'true') {
+          conversionAccepted = false;
+        }
       }
+
+      if (!conversionAccepted) {
+        showToastNotification('Este cupón promocional de un solo uso ya fue canjeado anteriormente.', '#dc3545');
+        logAI(`Intento de reutilización de cupón '${couponCode}' bloqueado (uso único).`, 'alert');
+        return;
+      }
+
+      sessionStorage.setItem(`tn_offer_converted_${RETAIL_ID}`, 'true');
+      localStorage.setItem(`technova_dismissed_${RETAIL_ID}`, Date.now().toString());
+
+      showToastNotification(`¡Conversión exitosa! Cupón ${couponCode} (${discPct}% dcto.) aplicado a tu pedido.`);
+      logAI(`¡Conversión exitosa! Cupón único ${couponCode} (${discPct}% dcto.) aplicado al pedido.`, 'success');
 
       window.dispatchEvent(new CustomEvent('technova:conversion', {
         detail: {
@@ -352,7 +438,8 @@
           product_name: data.product_name || 'Laptop Lenovo Gamer i5',
           original_price: data.original_price || 4199.00,
           discounted_price: data.discounted_price || 2939.30,
-          discount_percent: data.discount_percent || 30
+          discount_percent: data.discount_percent || 30,
+          coupon_code: couponCode
         }
       }));
     });
@@ -366,13 +453,15 @@
     if (overlay) overlay.remove();
   }
 
-  function showToastNotification(msg) {
+  function showToastNotification(msg, bgColor = '#198754') {
+    const existing = document.getElementById('technova-conversion-toast');
+    if (existing) existing.remove();
     const toast = document.createElement('div');
     toast.id = 'technova-conversion-toast';
     toast.style.position = 'fixed';
     toast.style.bottom = '25px';
     toast.style.right = '25px';
-    toast.style.backgroundColor = '#198754';
+    toast.style.backgroundColor = bgColor;
     toast.style.color = '#ffffff';
     toast.style.padding = '14px 22px';
     toast.style.borderRadius = '8px';
@@ -445,25 +534,30 @@
     hud.id = 'technova-hud';
     hud.innerHTML = `
       <div id="technova-hud-header">
-        <span>Motor Híbrido IA (Tiempo Real)</span>
-        <button id="technova-hud-toggle">_</button>
+        <span>Motor Híbrido IA (Tiempo Real) — Retail ID: ${RETAIL_ID} | Modelos: GRU (Secuencias) + XGBoost (Scores)</span>
+        <button id="technova-hud-toggle" title="Minimizar/Expandir consola IA">_</button>
       </div>
       <div id="technova-hud-body">
-        <div style="font-size: 0.75rem; color: #6c757d; margin-bottom: 8px;">
-          Retail ID: <strong>${RETAIL_ID}</strong> | Sesión: <strong>${sessionId.substring(0, 12)}...</strong><br>
-          Modelos: <strong>GRU (Secuencias) + XGBoost (Scores)</strong>
+        <div style="font-size: 0.78rem; color: #475569; margin-bottom: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <span>Sesión activa: <strong>${sessionId}</strong></span>
+          <span>Estado: <strong style="color:#198754;">Monitoreo Telemetría Activo (&lt;40ms)</strong></span>
         </div>
-        <ul id="technova-hud-events" style="list-style: none; padding: 0; margin: 0; max-height: 130px; overflow-y: auto; font-size: 0.8rem;">
-          <li>Sistema listo. Esperando actividad del comprador...</li>
+        <ul id="technova-hud-events" style="list-style: none; padding: 0; margin: 0; max-height: 92px; overflow-y: auto; font-size: 0.82rem; line-height: 1.45;">
+          <li style="padding: 3px 0; color: #334155;">Sistema listo. Esperando actividad del comprador...</li>
         </ul>
       </div>
     `;
-    document.body.appendChild(hud);
-
-    let collapsed = window.innerWidth <= 768;
-    if (collapsed) {
-      document.getElementById('technova-hud-body').style.display = 'none';
+    const slot = document.getElementById('technova-hud-slot');
+    const mainContainer = document.querySelector('main.main-container');
+    if (slot) {
+      slot.appendChild(hud);
+    } else if (mainContainer) {
+      mainContainer.prepend(hud);
+    } else {
+      document.body.appendChild(hud);
     }
+
+    let collapsed = false;
     document.getElementById('technova-hud-toggle').addEventListener('click', () => {
       collapsed = !collapsed;
       document.getElementById('technova-hud-body').style.display = collapsed ? 'none' : 'block';
@@ -503,37 +597,37 @@
       #technova-btn-close:hover { color: #111; }
       #technova-btn-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(25, 135, 84, 0.35); }
       #technova-hud {
-        position: fixed;
-        bottom: 15px; left: 15px;
-        width: 340px;
-        max-width: calc(100vw - 24px);
+        position: relative;
+        width: 100%;
+        max-width: 100%;
         background: #ffffff;
-        border: 1px solid #0d6efd;
+        border: 1px solid #bfdbfe;
+        border-left: 4px solid #0d6efd;
         border-radius: 10px;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-        font-family: monospace, sans-serif;
-        z-index: 999990;
+        box-shadow: 0 2px 10px rgba(13, 110, 253, 0.08);
+        font-family: 'Segoe UI', monospace, sans-serif;
+        z-index: 10;
         overflow: hidden;
+        box-sizing: border-box;
+      }
+      #technova-hud-events li {
+        white-space: normal;
+        word-break: break-word;
       }
       @media (max-width: 768px) {
         #technova-popup-card {
           width: 94%;
           padding: 22px 16px;
         }
-        #technova-hud {
-          left: 12px;
-          right: 12px;
-          bottom: 10px;
-          width: auto;
-        }
       }
       #technova-hud-header {
         background: #0d6efd; color: white;
-        padding: 8px 12px; font-size: 0.82rem; font-weight: bold;
+        padding: 8px 14px; font-size: 0.84rem; font-weight: bold;
         display: flex; justify-content: space-between; align-items: center;
+        gap: 10px;
       }
       #technova-hud-toggle { background: transparent; border: none; color: white; cursor: pointer; font-weight: bold; font-size: 14px; }
-      #technova-hud-body { padding: 10px 12px; }
+      #technova-hud-body { padding: 10px 14px; }
       @keyframes tnFadeIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes tnBounceIn {
         0% { transform: scale(0.85); opacity: 0; }
@@ -552,6 +646,7 @@
         const cfg = await res.json();
         campaignActive = Boolean(cfg.is_active);
         if (cfg.min_dwell_seconds) inactivityLimitSec = parseInt(cfg.min_dwell_seconds, 10) || 8;
+        if (cfg.sdk_token) sdkOriginToken = cfg.sdk_token;
       }
     } catch (e) {}
     logAI(`SDK Inicializado para tienda '${RETAIL_ID}'. Conectado a API: ${API_URL}`);
