@@ -1680,6 +1680,28 @@ const app = (function () {
     }
   }
 
+  function formatearDiaHoraPeru(rawTs) {
+    const d = rawTs ? parsearFechaPeru(rawTs) : new Date();
+    try {
+      const fechaStr = d.toLocaleDateString('es-PE', {
+        timeZone: 'America/Lima',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      const horaStr = d.toLocaleTimeString('es-PE', {
+        timeZone: 'America/Lima',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      return `${fechaStr} ${horaStr}`;
+    } catch (e) {
+      return d.toLocaleString();
+    }
+  }
+
   function deriveDeterministic64Hex(sessionId) {
     // Genera un hash hexadecimal determinista de 64 caracteres por sesión si un registro antiguo en caché local estaba truncado
     const seed = 'ley29733_sha256_' + String(sessionId || 'sess_anon');
@@ -1752,11 +1774,13 @@ const app = (function () {
 
   function renderTelemetryRows(tbody, events) {
     if (!tbody) return;
+    const th6 = document.querySelector('#subview-inicio .telemetry-table thead th:nth-child(6)');
+    if (th6) th6.textContent = 'Día y Hora';
     if (!Array.isArray(events) || events.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">Esperando eventos de la tienda externa...</td></tr>';
       return;
     }
-    // Mantis 0003334: Mostrar el hash SHA-256 completo de 64 caracteres hexadecimales único por sesión
+    // Mantis 0003334: Mostrar el hash SHA-256 completo de 64 caracteres hexadecimales único por sesión + Día y Hora
     tbody.innerHTML = events.map(e => {
       const fullHash = ensureFull64Sha256(e.AnonymizedIpHash, e.PK_SessionId);
       return `
@@ -1766,7 +1790,7 @@ const app = (function () {
         <td><strong>${e.ProductSku || 'Catálogo General'}</strong></td>
         <td style="max-width: 310px; word-break: break-all;"><code style="font-family: Consolas, monospace; font-size: 0.74rem; color: #0f172a;">${fullHash}</code></td>
         <td><span style="color:#198754; font-weight:bold;">Ley 29733 (Cumplido)</span></td>
-        <td><small style="color:#6c757d;">${formatearHoraPeru(e.SK_Timestamp)}</small></td>
+        <td style="white-space: nowrap;"><small style="color:#475569; font-weight:600;">${formatearDiaHoraPeru(e.SK_Timestamp)}</small></td>
       </tr>
     `;
     }).join('');
@@ -1906,19 +1930,39 @@ const app = (function () {
       }
     });
 
+    const refreshLiveDashboardAndAb = () => {
+      if (!hasValidSession()) return;
+      const p = window.location.pathname;
+      if (p === '/app/inicio') {
+        if (customDateFilter) {
+          cargarKPIs(customDateFilter.start, customDateFilter.end);
+        } else {
+          cargarKPIs();
+        }
+        cargarTelemetria();
+      } else if (p === '/app/ab-testing') {
+        cargarAbTest(false);
+      }
+    };
+
     if (broadcastChannel) {
       broadcastChannel.addEventListener('message', (ev) => {
-        if (ev.data && ev.data.type === 'TELEMETRY_EVENT_ADDED') {
-          if (window.location.pathname === '/app/inicio') {
-            cargarTelemetria();
-          }
+        if (ev.data && (ev.data.type === 'TELEMETRY_EVENT_ADDED' || ev.data.type === 'CONVERSION_COMPLETED')) {
+          refreshLiveDashboardAndAb();
         }
       });
     }
 
     window.addEventListener('storage', (ev) => {
-      if (ev.key === 'tn_telemetry_sync_buffer' && window.location.pathname === '/app/inicio') {
-        cargarTelemetria();
+      if (ev.key === 'tn_telemetry_sync_buffer' || ev.key === 'tn_kpi_sync_trigger') {
+        refreshLiveDashboardAndAb();
+      }
+    });
+
+    window.addEventListener('focus', refreshLiveDashboardAndAb);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        refreshLiveDashboardAndAb();
       }
     });
   }

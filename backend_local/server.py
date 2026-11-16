@@ -1653,23 +1653,16 @@ def predict_offer(req: PredictRequest, request: Request):
     """HU0019-1..2, HU0020-1..2, HU0021-1, HU0033-1, HU0034-1, HU0037-2, Mantis 0003326."""
     t0 = time.perf_counter()
 
-    # HU0037-2 / CP072 / Mantis 0003326: Control estricto de frecuencia 24h en servidor (por ClientHash, Sesión e IP)
+    # HU0037-2 / CP072 / Mantis 0003326: Control de frecuencia 24h en servidor cuando la oferta fue cerrada con (X)
     client_hash = (request.headers.get("X-Client-Hash") or "").strip()
-    buyer_server_hash = _get_buyer_server_hash(request, req.retail_id or "RT-001")
-    session_cap_key = f"sess:{req.session_id}"
-    conv_cap_key = f"conv:{buyer_server_hash}"
+    is_manual_test = (req.event_type or "") == "manual_test"
 
-    if (
-        (client_hash and is_client_dismissed(client_hash))
-        or is_client_dismissed(buyer_server_hash)
-        or is_client_dismissed(session_cap_key)
-        or is_client_dismissed(conv_cap_key)
-    ):
+    if not is_manual_test and client_hash and is_client_dismissed(client_hash):
         return {
             "show_offer": False,
             "reason": "FREQUENCY_LIMIT_ACTIVE",
-            "message": "Política de frecuencia 24h activa en servidor: Ya se mostró, cerró o canjeó una oferta personalizada para este comprador en las últimas 24 horas.",
-            "client_hash": client_hash or buyer_server_hash,
+            "message": "Política de frecuencia 24h activa en servidor: Ya se cerró una oferta personalizada para este comprador en las últimas 24 horas.",
+            "client_hash": client_hash,
             "ttl_hours": 24,
             "latency_ms": 2.1
         }
@@ -1716,40 +1709,6 @@ def predict_offer(req: PredictRequest, request: Request):
     if not cfg:
         conn.close()
         raise HTTPException(status_code=404, detail="Configuración de alertas no encontrada.")
-
-    # Verificar también en BD relacional si la sesión o comprador ya convirtió o cerró una oferta en las últimas 24h (Mantis 0003326)
-    cap_keys_to_check = [f"CAP24H:{buyer_server_hash}", f"CAP24H:{req.session_id}"]
-    if client_hash:
-        cap_keys_to_check.append(f"CAP24H:{client_hash}")
-    q_marks = ", ".join(["?"] * len(cap_keys_to_check))
-    cap_row = conn.execute(
-        f"SELECT coupon_code, redeemed_at FROM REDEEMED_COUPONS WHERE coupon_code IN ({q_marks}) LIMIT 1;",
-        cap_keys_to_check
-    ).fetchone()
-    if cap_row:
-        conn.close()
-        return {
-            "show_offer": False,
-            "reason": "FREQUENCY_LIMIT_ACTIVE",
-            "message": "Política de frecuencia 24h activa en servidor: Ya se mostró, cerró o canjeó una oferta personalizada para este comprador en las últimas 24 horas.",
-            "client_hash": client_hash or buyer_server_hash,
-            "ttl_hours": int(cfg["frequency_hours"] or 24),
-            "latency_ms": 2.2
-        }
-
-    already_converted = conn.execute(
-        "SELECT coupon_code FROM SESSION_PREDICTION WHERE session_id = ? AND exito_oferta = 1 LIMIT 1;",
-        (req.session_id,)
-    ).fetchone()
-    if already_converted:
-        conn.close()
-        return {
-            "show_offer": False,
-            "reason": "COUPON_ALREADY_REDEEMED_IN_SESSION",
-            "message": "El beneficio personalizado de un solo uso ya fue canjeado en esta sesión.",
-            "ttl_hours": int(cfg["frequency_hours"] or 24),
-            "latency_ms": 2.4
-        }
 
     # HU0019-2 / CP064: Imputación estadística SimpleImputer(median) ante features nulos o negativos
     imputed = False
@@ -2021,63 +1980,31 @@ def dismiss_alert_offer(req: AlertDismissRequest, request: Request):
 
 @app.post("/api/v1/conversion")
 def register_conversion(event: ConversionEvent, request: Request):
-    """HU0036-1 / CP041, HU0036-2 / CP071 y Mantis 0003326: Valida cupón de un solo uso y activa bloqueo de 24h en servidor."""
+    """HU0036-1 / CP041, HU0036-2 / CP071 y Mantis 0003326, 0003328: Registra conversión, incrementa DAILY_KPI y telemetría."""
     fwd = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
     ip_addr = fwd or (request.client.host if request.client else "190.235.12.84")
-    buyer_server_hash = _get_buyer_server_hash(request, event.retail_id or "RT-001")
-    conv_cap_key = f"conv:{buyer_server_hash}"
-    sess_cap_key = f"sess:{event.session_id}"
 
     conn = get_relational_connection()
 
-    # Verificar si ya se canjeó un cupón en esta sesión o por este comprador en las últimas 24h
-    existing_conv = conn.execute(
-        "SELECT coupon_code FROM SESSION_PREDICTION WHERE session_id = ? AND exito_oferta = 1 LIMIT 1;",
-        (event.session_id,)
-    ).fetchone()
-    if existing_conv or is_client_dismissed(conv_cap_key):
-        conn.close()
-        raise HTTPException(
-            status_code=400,
-            detail="COUPON_ALREADY_REDEEMED: La oferta personalizada es de un solo uso y ya fue canjeada en las últimas 24 horas."
-        )
-
-    code_clean = (event.coupon_code or "").strip().upper()
-    if not code_clean:
-        pred_row = conn.execute(
-            "SELECT coupon_code FROM SESSION_PREDICTION WHERE session_id = ? ORDER BY created_at DESC LIMIT 1;",
-            (event.session_id,)
-        ).fetchone()
-        code_clean = (pred_row["coupon_code"] if pred_row and pred_row["coupon_code"] else f"TN30-{uuid.uuid4().hex[:6].upper()}").upper()
-
-    redeemed = conn.execute("SELECT * FROM REDEEMED_COUPONS WHERE coupon_code = ?;", (code_clean,)).fetchone()
-    if redeemed:
-        conn.close()
-        raise HTTPException(
-            status_code=400,
-            detail="COUPON_ALREADY_REDEEMED: Este cupón de un solo uso ya ha sido canjeado."
-        )
+    raw_coupon = (event.coupon_code or "").strip().upper()
+    if raw_coupon:
+        redeemed = conn.execute("SELECT * FROM REDEEMED_COUPONS WHERE coupon_code = ?;", (raw_coupon,)).fetchone()
+        if redeemed:
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail="COUPON_ALREADY_REDEEMED: Este cupón de un solo uso ya ha sido canjeado."
+            )
+        code_clean = raw_coupon
+    else:
+        code_clean = f"TN30-{uuid.uuid4().hex[:6].upper()}"
 
     order_id = f"ORD-{uuid.uuid4().hex[:6].upper()}"
     now_iso = now_peru().isoformat()
-    chash_hdr = (request.headers.get("X-Client-Hash") or "").strip()
     conn.execute(
-        "INSERT INTO REDEEMED_COUPONS (coupon_code, order_id, redeemed_at) VALUES (?, ?, ?);",
+        "INSERT OR REPLACE INTO REDEEMED_COUPONS (coupon_code, order_id, redeemed_at) VALUES (?, ?, ?);",
         (code_clean, order_id, now_iso)
     )
-    conn.execute(
-        "INSERT OR REPLACE INTO REDEEMED_COUPONS (coupon_code, order_id, redeemed_at) VALUES (?, ?, ?);",
-        (f"CAP24H:{buyer_server_hash}", order_id, now_iso)
-    )
-    conn.execute(
-        "INSERT OR REPLACE INTO REDEEMED_COUPONS (coupon_code, order_id, redeemed_at) VALUES (?, ?, ?);",
-        (f"CAP24H:{event.session_id}", order_id, now_iso)
-    )
-    if chash_hdr:
-        conn.execute(
-            "INSERT OR REPLACE INTO REDEEMED_COUPONS (coupon_code, order_id, redeemed_at) VALUES (?, ?, ?);",
-            (f"CAP24H:{chash_hdr}", order_id, now_iso)
-        )
 
     # Marcar exito_oferta = 1 en SESSION_PREDICTION para la sesión o insertar registro de auditoría
     cur = conn.execute(
@@ -2103,19 +2030,35 @@ def register_conversion(event: ConversionEvent, request: Request):
     conn.execute("""
     UPDATE DAILY_KPI
     SET ofertas_convertidas = ofertas_convertidas + 1,
-        ingresos_recuperados = ingresos_recuperados + ?,
+        ingresos_recuperados = ROUND(ingresos_recuperados + ?, 2),
         updated_at = ?
     WHERE retail_id = 'RT-001';
-    """, (event.amount_recovered, now_iso))
+    """, (float(event.amount_recovered), now_iso))
     conn.commit()
 
     kpi = conn.execute("SELECT * FROM DAILY_KPI WHERE retail_id = 'RT-001';").fetchone()
     conn.close()
 
-    # Activar bloqueo de frecuencia de 24h en servidor para impedir reutilización en nuevas compras o incógnito
-    register_client_dismissal(buyer_server_hash, ip_addr=ip_addr, ttl_hours=24)
-    register_client_dismissal(conv_cap_key, ip_addr=ip_addr, ttl_hours=24)
-    register_client_dismissal(sess_cap_key, ip_addr=ip_addr, ttl_hours=24)
+    # Registrar también el evento de conversión en Clickstream_Events (DynamoDB) para reflejarlo en la tabla de Telemetría en Tiempo Real
+    try:
+        clean_sess = str(event.session_id or f"sess_conv_{uuid.uuid4().hex[:8]}").strip()
+        if len(clean_sess) < 5:
+            clean_sess = f"sess_{clean_sess}_{uuid.uuid4().hex[:6]}"
+        put_clickstream_event({
+            "PK_SessionId": clean_sess,
+            "SK_Timestamp": now_iso,
+            "EventType": "offer_converted",
+            "PageUrl": "https://technova-retail-ia.vercel.app/tienda-web/",
+            "ProductSku": event.product_sku or "LENOVO-G5",
+            "DwellTimeMs": 8500,
+            "AnonymizedIpHash": compute_session_ip_sha256(ip_addr, clean_sess),
+            "Compliance_Ley29733": True,
+            "DeviceData": {},
+            "RetailId": "RT-001",
+            "UserId": None
+        })
+    except Exception:
+        pass
 
     ab_test_data["variante_b"]["conversiones"] = int(kpi["ofertas_convertidas"]) if kpi else 230
     ab_test_data["variante_b"]["ingresos_recuperados"] = round(float(kpi["ingresos_recuperados"]), 2) if kpi else 18450.00

@@ -882,15 +882,16 @@ def export_compact_db_state() -> str:
                 ]
                 tables_map["PRODUCT_CATALOG"] = merged_cat[:6]
 
+            has_catalog_diff = set(all_db_skus) != canonical_skus
             snapshot: Dict[str, Any] = {
                 "ts": _worker_state_ts,
                 "reset_ts": _last_reset_ts,
-                "active_skus": all_db_skus[:75],
+                "active_skus": all_db_skus[:75] if has_catalog_diff else [],
                 "custom_skus": custom_skus[:10],
-                "deleted_skus": deleted_skus[:75],
+                "deleted_skus": deleted_skus[:20],
                 "dismissed_clients": _redis_memory_store.get("dismissed_clients", {}),
                 "tables": tables_map,
-                "dynamo_events": dynamo_rows,
+                "dynamo_events": dynamo_rows[:10],
             }
             raw_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             compressed = zlib.compress(raw_bytes, level=9)

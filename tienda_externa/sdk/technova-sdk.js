@@ -395,6 +395,7 @@
       closeOfferModal();
 
       let conversionAccepted = true;
+      let convRespData = null;
       try {
         const res = await fetch(`${API_URL}/api/v1/conversion`, {
           method: 'POST',
@@ -412,6 +413,8 @@
         });
         if (!res.ok) {
           conversionAccepted = false;
+        } else {
+          convRespData = await res.json();
         }
       } catch (e) {
         // Si está offline, validar por estado de sesión local
@@ -428,6 +431,16 @@
 
       sessionStorage.setItem(`tn_offer_converted_${RETAIL_ID}`, 'true');
       localStorage.setItem(`technova_dismissed_${RETAIL_ID}`, Date.now().toString());
+      try {
+        localStorage.setItem('tn_kpi_sync_trigger', JSON.stringify({
+          ts: Date.now(),
+          amount_recovered: data.discounted_price || 2939.30,
+          total_formatted: convRespData && convRespData.total_recovered_formatted ? convRespData.total_recovered_formatted : null
+        }));
+        if (sdkBroadcastChannel) {
+          sdkBroadcastChannel.postMessage({ type: 'CONVERSION_COMPLETED', data: convRespData });
+        }
+      } catch (e) {}
 
       showToastNotification(`¡Conversión exitosa! Cupón ${couponCode} (${discPct}% dcto.) aplicado a tu pedido.`);
       logAI(`¡Conversión exitosa! Cupón único ${couponCode} (${discPct}% dcto.) aplicado al pedido.`, 'success');

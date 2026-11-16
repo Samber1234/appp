@@ -414,6 +414,13 @@ function checkout() {
     couponUsedInSession = true;
     sessionStorage.setItem('tn_coupon_redeemed_RT-001', 'true');
   }
+  try {
+    localStorage.setItem('tn_kpi_sync_trigger', JSON.stringify({ ts: Date.now(), source: 'checkout' }));
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('technova_alert_sync');
+      bc.postMessage({ type: 'CONVERSION_COMPLETED', ts: Date.now() });
+    }
+  } catch (e) {}
   alert('¡Compra finalizada exitosamente! Tu pedido ha sido procesado y registrado en las métricas de TechNova Store Perú.');
   cart = [];
   appliedDiscount = 0;
