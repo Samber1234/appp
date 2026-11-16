@@ -14,6 +14,7 @@ from .database import (
     log_system_event,
     get_system_logs,
     load_canonical_store_catalog,
+    compute_session_ip_sha256,
     RELATIONAL_DB_PATH,
     DYNAMO_DB_PATH
 )

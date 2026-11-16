@@ -95,10 +95,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 40px;
+  padding: 12px 30px;
+  min-height: 60px;
   background: white;
   border-bottom: 1px solid var(--border-color);
-  position: sticky;
+  position: relative;
   top: 0;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0,0,0,0.02);
@@ -120,7 +121,8 @@ body {
 .nav-links {
   display: flex;
   list-style: none;
-  gap: 28px;
+  gap: 20px;
+  align-items: center;
   margin: 0;
   padding: 0;
 }
@@ -187,9 +189,25 @@ body {
 }
 
 .content-container {
-  padding: 30px 40px;
+  padding: 38px 40px 44px 40px;
   max-width: 1400px;
   margin: 0 auto;
+  scroll-margin-top: 85px;
+}
+
+#subview-inicio,
+#subview-ia-metrics,
+#subview-ab-testing,
+#subview-alertas,
+#subview-configuracion {
+  padding-top: 10px;
+  scroll-margin-top: 85px;
+}
+
+#config-main-title {
+  margin-top: 6px;
+  padding-top: 4px;
+  line-height: 1.3;
 }
 
 /* ==========================================================================

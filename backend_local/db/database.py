@@ -31,6 +31,13 @@ def now_peru() -> datetime:
     return datetime.now(PERU_TZ).replace(tzinfo=None)
 
 
+def compute_session_ip_sha256(raw_ip: str, session_id: str) -> str:
+    """HU0012-1 / CP016 / Mantis 0003334: Genera hash SHA-256 de 64 caracteres hexadecimales único por sesión e IP."""
+    clean_ip = str(raw_ip or "190.235.12.84").strip()
+    clean_sess = str(session_id or "sess_default").strip()
+    return hashlib.sha256(f"ley29733:{clean_ip}:{clean_sess}".encode("utf-8")).hexdigest()
+
+
 def normalize_to_peru_iso(ts_str: str) -> str:
     """Convierte cualquier marca temporal ISO (UTC con Z, con offset o UTC naive +5h de Serverless) a hora peruana (UTC-5)."""
     if not ts_str or not isinstance(ts_str, str):
@@ -473,21 +480,32 @@ def init_databases(reset_to_defaults: bool = False):
         if dcur.fetchone()["cnt"] == 0:
             t1 = now_peru().isoformat()
             t2 = (now_peru() + timedelta(milliseconds=15)).isoformat()
+            h1 = compute_session_ip_sha256("190.235.12.84", "sess_init_001_8a7b")
+            h2 = compute_session_ip_sha256("190.235.12.84", "sess_init_002_9c1d")
             dcur.execute("""
             INSERT INTO Clickstream_Events (PK_SessionId, SK_Timestamp, EventType, PageUrl, ProductSku, DwellTimeMs, AnonymizedIpHash, Compliance_Ley29733, DeviceData, RetailId, UserId)
             VALUES
-                (?, ?, 'product_view', 'https://tienda-asociada.pe/productos/lenovo-gamer-i5', 'LENOVO-G5', 8500, 'c2084c68832a8239', 1, '{"screen_width": 1920, "screen_height": 1080}', 'RT-001', NULL),
-                (?, ?, 'exit_intent', 'https://tienda-asociada.pe/carrito', 'ASUS-ROG', 14200, '4a719d38bb1092e1', 1, '{"screen_width": 1440, "screen_height": 900}', 'RT-001', NULL);
-            """, ("sess_init_001_8a7b", t1, "sess_init_002_9c1d", t2))
+                (?, ?, 'product_view', 'https://tienda-asociada.pe/productos/lenovo-gamer-i5', 'LENOVO-G5', 8500, ?, 1, '{"screen_width": 1920, "screen_height": 1080}', 'RT-001', NULL),
+                (?, ?, 'exit_intent', 'https://tienda-asociada.pe/carrito', 'ASUS-ROG', 14200, ?, 1, '{"screen_width": 1440, "screen_height": 900}', 'RT-001', NULL);
+            """, ("sess_init_001_8a7b", t1, h1, "sess_init_002_9c1d", t2, h2))
         else:
-            # Corregir registros previos que hubieran sido grabados en UTC (+5h) a hora peruana (UTC-5)
-            existing_ev = dcur.execute("SELECT PK_SessionId, SK_Timestamp FROM Clickstream_Events;").fetchall()
+            # Limpiar sesiones inválidas o de otros tenants (Mantis 0003323) y normalizar hashes SHA-256 de 64 caracteres (Mantis 0003334)
+            dcur.execute("DELETE FROM Clickstream_Events WHERE LENGTH(TRIM(PK_SessionId)) < 5 OR RetailId NOT IN ('RT-001', 'RET-LIMA-001');")
+            existing_ev = dcur.execute("SELECT PK_SessionId, SK_Timestamp, AnonymizedIpHash FROM Clickstream_Events;").fetchall()
             for row_ev in existing_ev:
-                norm_sk = normalize_to_peru_iso(row_ev["SK_Timestamp"])
-                if norm_sk != row_ev["SK_Timestamp"]:
+                pk_ev = row_ev["PK_SessionId"]
+                sk_ev = row_ev["SK_Timestamp"]
+                norm_sk = normalize_to_peru_iso(sk_ev)
+                cur_hash = str(row_ev["AnonymizedIpHash"] or "").strip()
+                shared_legacy_hashes = {
+                    "12ca17b49af2289436f303e0166030a21e525d266e209267433801a8fd4071a0",
+                    "e18d443dacfec17c8501eb2f66840a6086e7644593f67a0c32d58fc5a1a06985",
+                }
+                new_hash = cur_hash if (len(cur_hash) == 64 and cur_hash not in shared_legacy_hashes) else compute_session_ip_sha256("190.235.12.84", pk_ev)
+                if norm_sk != sk_ev or new_hash != cur_hash:
                     dcur.execute(
-                        "UPDATE OR IGNORE Clickstream_Events SET SK_Timestamp = ? WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
-                        (norm_sk, row_ev["PK_SessionId"], row_ev["SK_Timestamp"]),
+                        "UPDATE OR IGNORE Clickstream_Events SET SK_Timestamp = ?, AnonymizedIpHash = ? WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
+                        (norm_sk, new_hash, pk_ev, sk_ev),
                     )
 
         dconn.commit()
@@ -562,32 +580,43 @@ def put_clickstream_event(record: Dict[str, Any]) -> Dict[str, Any]:
     return {"event_id": f"evt_{total_cnt:05d}", "PK_SessionId": pk, "SK_Timestamp": sk}
 
 
-def get_recent_clickstream_events(limit: int = 15) -> List[Dict[str, Any]]:
+def get_recent_clickstream_events(limit: int = 15, retail_id: str = "RT-001") -> List[Dict[str, Any]]:
     with _db_lock:
         dconn = get_dynamo_connection()
         dcur = dconn.cursor()
-        all_ts_rows = dcur.execute("SELECT PK_SessionId, SK_Timestamp FROM Clickstream_Events;").fetchall()
+        dcur.execute("DELETE FROM Clickstream_Events WHERE LENGTH(TRIM(PK_SessionId)) < 5 OR RetailId NOT IN ('RT-001', 'RET-LIMA-001');")
+        all_ts_rows = dcur.execute("SELECT PK_SessionId, SK_Timestamp, AnonymizedIpHash FROM Clickstream_Events;").fetchall()
         dirty = False
+        shared_legacy_hashes = {
+            "12ca17b49af2289436f303e0166030a21e525d266e209267433801a8fd4071a0",
+            "e18d443dacfec17c8501eb2f66840a6086e7644593f67a0c32d58fc5a1a06985",
+        }
         for tr in all_ts_rows:
-            norm_sk = normalize_to_peru_iso(tr["SK_Timestamp"])
-            if norm_sk != tr["SK_Timestamp"]:
+            pk_val = tr["PK_SessionId"]
+            sk_val = tr["SK_Timestamp"]
+            norm_sk = normalize_to_peru_iso(sk_val)
+            cur_h = str(tr["AnonymizedIpHash"] or "").strip()
+            new_h = cur_h if (len(cur_h) == 64 and cur_h not in shared_legacy_hashes) else compute_session_ip_sha256("190.235.12.84", pk_val)
+            if norm_sk != sk_val or new_h != cur_h:
                 dcur.execute(
-                    "UPDATE OR IGNORE Clickstream_Events SET SK_Timestamp = ? WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
-                    (norm_sk, tr["PK_SessionId"], tr["SK_Timestamp"]),
+                    "UPDATE OR IGNORE Clickstream_Events SET SK_Timestamp = ?, AnonymizedIpHash = ? WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
+                    (norm_sk, new_h, pk_val, sk_val),
                 )
-                dcur.execute(
-                    "DELETE FROM Clickstream_Events WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
-                    (tr["PK_SessionId"], tr["SK_Timestamp"]),
-                )
+                if norm_sk != sk_val:
+                    dcur.execute(
+                        "DELETE FROM Clickstream_Events WHERE PK_SessionId = ? AND SK_Timestamp = ?;",
+                        (pk_val, sk_val),
+                    )
                 dirty = True
         if dirty:
             dconn.commit()
         dcur.execute("""
         SELECT PK_SessionId, SK_Timestamp, EventType, PageUrl, ProductSku, DwellTimeMs, AnonymizedIpHash, Compliance_Ley29733, DeviceData, RetailId, UserId
         FROM Clickstream_Events
+        WHERE RetailId = ? AND LENGTH(TRIM(PK_SessionId)) >= 5
         ORDER BY SK_Timestamp DESC
         LIMIT ?;
-        """, (limit,))
+        """, (retail_id, limit))
         rows = dcur.fetchall()
         dconn.close()
 
@@ -597,14 +626,17 @@ def get_recent_clickstream_events(limit: int = 15) -> List[Dict[str, Any]]:
             dev_data = json.loads(r["DeviceData"]) if r["DeviceData"] else {}
         except Exception:
             dev_data = {}
+        pk_str = str(r["PK_SessionId"]).strip()
+        raw_h = str(r["AnonymizedIpHash"] or "").strip()
+        full_h = raw_h if len(raw_h) == 64 else compute_session_ip_sha256("190.235.12.84", pk_str)
         result.append({
-            "PK_SessionId": r["PK_SessionId"],
+            "PK_SessionId": pk_str,
             "SK_Timestamp": normalize_to_peru_iso(r["SK_Timestamp"]),
             "EventType": r["EventType"],
             "PageUrl": r["PageUrl"],
             "ProductSku": r["ProductSku"],
             "DwellTimeMs": r["DwellTimeMs"],
-            "AnonymizedIpHash": r["AnonymizedIpHash"],
+            "AnonymizedIpHash": full_h,
             "Compliance_Ley29733": bool(r["Compliance_Ley29733"]),
             "DeviceData": dev_data,
             "RetailId": r["RetailId"],
@@ -853,8 +885,10 @@ def export_compact_db_state() -> str:
             snapshot: Dict[str, Any] = {
                 "ts": _worker_state_ts,
                 "reset_ts": _last_reset_ts,
+                "active_skus": all_db_skus[:75],
                 "custom_skus": custom_skus[:10],
-                "deleted_skus": deleted_skus[:20],
+                "deleted_skus": deleted_skus[:75],
+                "dismissed_clients": _redis_memory_store.get("dismissed_clients", {}),
                 "tables": tables_map,
                 "dynamo_events": dynamo_rows,
             }
@@ -943,15 +977,26 @@ def import_compact_db_state(token_str: str):
                 finally:
                     dconn.close()
 
-            # 2. Fusionar tablas relacionales comparando updated_at por fila para jamás sobrescribir cambios más recientes
+            # 2. Fusionar dismissed_clients de Redis entre instancias Serverless (Mantis 0003326)
+            incoming_dismissed = snapshot.get("dismissed_clients")
+            if isinstance(incoming_dismissed, dict):
+                for d_key, d_val in incoming_dismissed.items():
+                    if isinstance(d_val, dict):
+                        _redis_memory_store["dismissed_clients"][d_key] = d_val
+
+            # 3. Fusionar tablas relacionales comparando updated_at por fila para jamás sobrescribir cambios más recientes
             tables_data = snapshot.get("tables", {})
             canonical_items = load_canonical_store_catalog()
             canonical_skus = {str(p["sku"]).strip().upper() for p in canonical_items}
-            raw_custom = snapshot.get("custom_skus") if isinstance(snapshot.get("custom_skus"), list) else []
-            raw_deleted = snapshot.get("deleted_skus") if isinstance(snapshot.get("deleted_skus"), list) else []
-            custom_sku_set = {str(s).strip().upper() for s in raw_custom if s}
-            deleted_sku_set = {str(s).strip().upper() for s in raw_deleted if s}
-            allowed_catalog_skus = (canonical_skus - deleted_sku_set).union(custom_sku_set)
+            raw_active = snapshot.get("active_skus")
+            if isinstance(raw_active, list) and len(raw_active) > 0:
+                allowed_catalog_skus = {str(s).strip().upper() for s in raw_active if s}
+            else:
+                raw_custom = snapshot.get("custom_skus") if isinstance(snapshot.get("custom_skus"), list) else []
+                raw_deleted = snapshot.get("deleted_skus") if isinstance(snapshot.get("deleted_skus"), list) else []
+                custom_sku_set = {str(s).strip().upper() for s in raw_custom if s}
+                deleted_sku_set = {str(s).strip().upper() for s in raw_deleted if s}
+                allowed_catalog_skus = (canonical_skus - deleted_sku_set).union(custom_sku_set)
 
             conn = get_relational_connection()
             try:
