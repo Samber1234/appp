@@ -2603,38 +2603,42 @@ def get_ab_test(request: Request, low_sample: bool = False):
     canonical_ingresos = round(float(kpi["ingresos_recuperados"]), 2) if kpi else 18450.00
     canonical_conv = round(float(kpi["tasa_conversion"]), 1) if kpi else 32.4
 
+    variante_a_Unified = {
+        "name": "Variante A (Oferta Estándar sin IA)",
+        "badge": "Variante A: Grupo Control",
+        "descuento": 15,
+        "urgencia": False,
+        "impresiones": 710,
+        "conversiones": 101,
+        "tasa_conversion": 14.2,
+        "ingresos_recuperados": 5800.00,
+        "ingresos_recuperados_formatted": "S/ 5,800.00"
+    }
+    variante_b_Unified = {
+        "name": "Variante B (Oferta Personalizada con IA)",
+        "badge": "Variante B: TechNova IA (Ganador)",
+        "descuento": 30,
+        "urgencia": True,
+        "impresiones": 710,
+        "conversiones": 230,
+        "tasa_conversion": canonical_conv,
+        "ingresos_recuperados": canonical_ingresos,
+        "ingresos_recuperados_formatted": f"S/ {canonical_ingresos:,.2f}"
+    }
+
     if low_sample:
         return {
             "active": True,
             "split_ratio": 50,
-            "sample_size": 15,
+            "sample_size": 1420,
+            "simulated_sample_size": 15,
             "is_significant": False,
             "p_value": 0.48,
             "confianza_estadistica": "No concluyente (p = 0.48 > 0.05)",
             "significance_warning": "No concluyente (p=0.48). Se requieren al menos 85 sesiones adicionales",
-            "conclusion_text": "Muestra insuficiente (15 sesiones evaluadas; mínimo requerido: 100 sesiones). Con un p-value = 0.48 (> 0.05), NO existe evidencia estadística suficiente para rechazar la hipótesis nula (H0) ni declarar una variante ganadora hasta completar al menos 85 sesiones adicionales.",
-            "variante_a": {
-                "name": "Variante A (Oferta Estándar sin IA)",
-                "badge": "Variante A: Grupo Control",
-                "descuento": 15,
-                "urgencia": False,
-                "impresiones": 7,
-                "conversiones": 1,
-                "tasa_conversion": 14.3,
-                "ingresos_recuperados": 410.00,
-                "ingresos_recuperados_formatted": "S/ 410.00"
-            },
-            "variante_b": {
-                "name": "Variante B (Oferta Personalizada con IA)",
-                "badge": "Variante B: TechNova IA (En evaluación - Muestra baja)",
-                "descuento": 30,
-                "urgencia": True,
-                "impresiones": 8,
-                "conversiones": 2,
-                "tasa_conversion": 25.0,
-                "ingresos_recuperados": 1180.00,
-                "ingresos_recuperados_formatted": "S/ 1,180.00"
-            }
+            "conclusion_text": "En la simulación de muestra reducida (15 sesiones frente al umbral mínimo de 100 sesiones; 85 sesiones adicionales requeridas), el valor p = 0.48 (> 0.05) indica que NO existe diferencia estadísticamente significativa y NO se rechaza la hipótesis nula (H0). (Las tarjetas superiores conservan las métricas reales acumuladas de la tienda con 1,420 sesiones).",
+            "variante_a": variante_a_Unified,
+            "variante_b": variante_b_Unified
         }
 
     return {
@@ -2645,29 +2649,9 @@ def get_ab_test(request: Request, low_sample: bool = False):
         "p_value": 0.002,
         "confianza_estadistica": "99.8% (Estadísticamente Significativo)",
         "significance_warning": None,
-        "conclusion_text": f"Con un nivel de confianza del 99.8% (p-value = 0.002 < 0.05), se rechaza la hipótesis nula (H0). La intervención de la plataforma SaaS y el motor predictivo de IA incrementa estadísticamente la tasa de conversión en un +128% ({canonical_conv:.1f}% vs. 14.2%) y alcanza S/ {canonical_ingresos:,.2f} en ingresos recuperados frente a S/ 5,800.00 de la Oferta Estándar sin IA.",
-        "variante_a": {
-            "name": "Variante A (Oferta Estándar sin IA)",
-            "badge": "Variante A: Grupo Control",
-            "descuento": 15,
-            "urgencia": False,
-            "impresiones": 710,
-            "conversiones": 101,
-            "tasa_conversion": 14.2,
-            "ingresos_recuperados": 5800.00,
-            "ingresos_recuperados_formatted": "S/ 5,800.00"
-        },
-        "variante_b": {
-            "name": "Variante B (Oferta Personalizada con IA)",
-            "badge": "Variante B: TechNova IA (Ganador)",
-            "descuento": 30,
-            "urgencia": True,
-            "impresiones": 710,
-            "conversiones": 230,
-            "tasa_conversion": canonical_conv,
-            "ingresos_recuperados": canonical_ingresos,
-            "ingresos_recuperados_formatted": f"S/ {canonical_ingresos:,.2f}"
-        }
+        "conclusion_text": f"Con la muestra activa de la tienda de 1,420 sesiones (710 por variante) y un nivel de confianza del 99.8% (p-value = 0.002 < 0.05), se rechaza la hipótesis nula (H0). La intervención de la plataforma SaaS y el motor predictivo de IA incrementa estadísticamente la tasa de conversión en un +128% ({canonical_conv:.1f}% vs. 14.2%) y alcanza S/ {canonical_ingresos:,.2f} en ingresos recuperados frente a S/ 5,800.00 de la Oferta Estándar sin IA.",
+        "variante_a": variante_a_Unified,
+        "variante_b": variante_b_Unified
     }
 
 
